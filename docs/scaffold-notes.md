@@ -27,7 +27,7 @@
 
 ## Note on Tailwind v4
 
-Tailwind v4 does not use a `tailwind.config.ts` file. Configuration is handled by the `@tailwindcss/vite` plugin added in `vite.config.ts`. The only CSS file needed is `src/styles.css` with `@import 'tailwindcss'`.
+Tailwind v4 primarily uses the `@tailwindcss/vite` plugin in `vite.config.ts`. A `tailwind.config.ts` is also included at the project root with content paths for class scanning. The global stylesheet is `src/styles.css` with `@import 'tailwindcss'`.
 
 ## How I verified
 
