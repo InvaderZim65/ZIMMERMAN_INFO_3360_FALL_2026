@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import {
+  Link,
   Outlet,
   createRootRoute,
   HeadContent,
@@ -20,7 +21,26 @@ export const Route = createRootRoute({
 function RootComponent() {
   return (
     <RootDocument>
-      <Outlet />
+      {/* Shared header and nav for every page */}
+      <header className="bg-gray-900 text-white p-4">
+        <h1 className="text-xl font-bold">Hockey Ops Directory</h1>
+        <nav className="mt-2 flex gap-4 text-sm">
+          <Link to="/" className="hover:underline">
+            Home
+          </Link>
+          <Link to="/players" className="hover:underline">
+            Players
+          </Link>
+          <Link to="/games" className="hover:underline">
+            Games
+          </Link>
+        </nav>
+      </header>
+
+      {/* Child route content renders here */}
+      <main className="p-4">
+        <Outlet />
+      </main>
     </RootDocument>
   )
 }
