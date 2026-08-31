@@ -9,7 +9,8 @@ function Home() {
     <div className="p-8">
       <h1 className="text-3xl font-bold">Hockey Ops Player Directory</h1>
       <p className="mt-2 text-gray-600">
-        Skeleton app running. Routes and player data come next.
+        TanStack Start skeleton running. Product routes and player data come in
+        the next step.
       </p>
     </div>
   )
