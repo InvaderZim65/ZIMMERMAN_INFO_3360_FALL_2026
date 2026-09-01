@@ -1,16 +1,22 @@
 import { createFileRoute } from '@tanstack/react-router'
 
-// Players list route: /players
-// Full player list UI and seed data come in a later step.
 export const Route = createFileRoute('/players/')({
-  component: PlayersIndex,
+  component: PlayersIndexPage,
 })
 
-function PlayersIndex() {
+function PlayersIndexPage() {
   return (
-    <div>
-      <h2 className="text-2xl font-bold">Players</h2>
-      <p className="mt-2 text-gray-600">Player list will be built here.</p>
-    </div>
+    <main className="mx-auto max-w-3xl p-6">
+      <h1 className="text-2xl font-bold text-slate-900">Players</h1>
+      <p className="mt-2 text-slate-600">
+        Roster directory index for hockey operations staff. Each player will
+        get a bookmarkable detail page next.
+      </p>
+      <ul className="mt-4 list-disc space-y-1 pl-5 text-slate-700">
+        <li>Placeholder player row - A. Forward</li>
+        <li>Placeholder player row - B. Defense</li>
+        <li>Placeholder player row - C. Goalie</li>
+      </ul>
+    </main>
   )
 }
