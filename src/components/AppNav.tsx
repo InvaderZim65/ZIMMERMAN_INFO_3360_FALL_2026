@@ -1,5 +1,9 @@
 import { Link } from '@tanstack/react-router'
 
+const linkBase =
+  'rounded-md px-2 py-1 text-slate-700 transition hover:bg-slate-100 hover:text-slate-900'
+const linkActive = 'rounded-md px-2 py-1 bg-sky-50 text-sky-700 font-semibold'
+
 export function AppNav() {
   return (
     <nav
@@ -8,22 +12,27 @@ export function AppNav() {
     >
       <Link
         to="/"
-        className="text-slate-700 hover:text-slate-900"
-        activeProps={{ className: 'text-sky-700 underline' }}
+        activeOptions={{ exact: true }}
+        className={linkBase}
+        activeProps={{ className: linkActive }}
       >
         Home
       </Link>
       <Link
         to="/players"
-        className="text-slate-700 hover:text-slate-900"
-        activeProps={{ className: 'text-sky-700 underline' }}
+        search={{ position: 'all', status: 'active' }}
+        activeOptions={{ exact: false }}
+        className={linkBase}
+        activeProps={{ className: linkActive }}
       >
         Players
       </Link>
       <Link
         to="/games"
-        className="text-slate-700 hover:text-slate-900"
-        activeProps={{ className: 'text-sky-700 underline' }}
+        search={{ team: '', date: '' }}
+        activeOptions={{ exact: false }}
+        className={linkBase}
+        activeProps={{ className: linkActive }}
       >
         Games
       </Link>
