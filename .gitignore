@@ -4,3 +4,7 @@ dist
 .output
 .vercel
 count.txt
+.env
+.env.local
+.env.production
+.env*.local
