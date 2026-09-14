@@ -1,22 +1,24 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
+import { createServerFn } from '@tanstack/react-start'
 import { validatePlayersSearch } from '../../lib/searchSchemas'
-import { getDirectoryEntries } from '../../server/directory'
-import type { DirectoryEntry } from '../../server/directory'
+import { listPlayers } from '../../server/directoryLoader'
+import type { SeedPlayer } from '../../data/hockeySeed'
+
+const loadPlayers = createServerFn({ method: 'GET' })
+  .validator((input: { position: string }) => input)
+  .handler(async ({ data }) => {
+    return listPlayers(data.position)
+  })
 
 export const Route = createFileRoute('/players/')({
   validateSearch: (raw) => validatePlayersSearch(raw as Record<string, unknown>),
   loaderDeps: ({ search }) => ({ position: search.position }),
-  loader: async ({ deps }) => {
-    const entries = await getDirectoryEntries({
-      data: { role: deps.position },
-    })
-    return entries
-  },
+  loader: ({ deps }) => loadPlayers({ data: { position: deps.position } }),
   component: PlayersIndexPage,
 })
 
 function PlayersIndexPage() {
-  const entries = Route.useLoaderData() as DirectoryEntry[]
+  const players = Route.useLoaderData() as SeedPlayer[]
   const { position, status } = Route.useSearch()
 
   return (
@@ -71,10 +73,10 @@ function PlayersIndexPage() {
         </Link>
       </p>
 
-      {/* Directory entries list */}
-      {!entries || entries.length === 0 ? (
+      {/* Player list */}
+      {players.length === 0 ? (
         <div className="mt-6 rounded-lg border border-slate-200 bg-slate-50 p-6 text-center">
-          <p className="font-medium text-slate-700">No directory entries found</p>
+          <p className="font-medium text-slate-700">No players match the current filters</p>
           <p className="mt-1 text-sm text-slate-500">
             Try changing the position or status filter above.
           </p>
@@ -88,23 +90,23 @@ function PlayersIndexPage() {
         </div>
       ) : (
         <ul className="mt-4 divide-y divide-slate-100">
-          {entries.map((entry) => (
-            <li key={entry.id} className="py-3">
+          {players.map((player) => (
+            <li key={player.id} className="py-3">
               <Link
                 to="/players/$playerId"
-                params={{ playerId: entry.id }}
+                params={{ playerId: player.id }}
                 className="group flex items-baseline gap-3"
               >
                 <span className="font-mono text-sm text-slate-400">
-                  #{entry.number}
+                  #{player.number}
                 </span>
                 <span className="font-medium text-slate-900 group-hover:text-sky-700">
-                  {entry.displayName}
+                  {player.name}
                 </span>
                 <span className="rounded bg-slate-100 px-1.5 py-0.5 text-xs font-medium text-slate-600">
-                  {entry.role}
+                  {player.position}
                 </span>
-                <span className="text-sm text-slate-500">{entry.teamName}</span>
+                <span className="text-sm text-slate-500">{player.team}</span>
               </Link>
             </li>
           ))}
@@ -112,7 +114,7 @@ function PlayersIndexPage() {
       )}
 
       <p className="mt-6 text-xs text-slate-400">
-        {entries?.length ?? 0} entr{entries?.length !== 1 ? 'ies' : 'y'} shown
+        {players.length} player{players.length !== 1 ? 's' : ''} shown
       </p>
     </main>
   )
