@@ -1,15 +1,13 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
-import { createServerFn } from '@tanstack/react-start'
-import { listPlayers, listGames } from '../server/directoryLoader'
+import { getDirectoryEntries } from '../server/directory'
 
-const loadHomeCounts = createServerFn({ method: 'GET' }).handler(async () => {
-  const players = listPlayers()
-  const games = listGames()
-  return { playerCount: players.length, gameCount: games.length }
-})
+const SCHEDULE_COUNT = 11 // static game count shown on homepage
 
 export const Route = createFileRoute('/')({
-  loader: () => loadHomeCounts(),
+  loader: async () => {
+    const entries = await getDirectoryEntries({ data: {} })
+    return { playerCount: entries.length, gameCount: SCHEDULE_COUNT }
+  },
   component: HomePage,
 })
 

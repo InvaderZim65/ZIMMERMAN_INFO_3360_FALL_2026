@@ -1,15 +1,8 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
-import { createServerFn } from '@tanstack/react-start'
 import { parsePlayerIdParam } from '../../lib/playerParams'
-import { getPlayerById } from '../../server/directoryLoader'
+import { getDirectoryEntryById } from '../../server/directory'
 import { NotFoundPlayer } from '../../components/NotFoundPlayer'
-import type { SeedPlayer } from '../../data/hockeySeed'
-
-const loadPlayer = createServerFn({ method: 'GET' })
-  .validator((input: { playerId: string }) => input)
-  .handler(async ({ data }) => {
-    return getPlayerById(data.playerId) ?? null
-  })
+import type { DirectoryEntry } from '../../server/directory'
 
 export const Route = createFileRoute('/players/$playerId')({
   params: {
@@ -20,15 +13,15 @@ export const Route = createFileRoute('/players/$playerId')({
       playerId: String(playerId),
     }),
   },
-  loader: ({ params }) => loadPlayer({ data: { playerId: params.playerId } }),
+  loader: ({ params }) => getDirectoryEntryById({ data: { id: params.playerId } }),
   component: PlayerDetailPage,
 })
 
 function PlayerDetailPage() {
   const { playerId } = Route.useParams()
-  const player = Route.useLoaderData() as SeedPlayer | null
+  const entry = Route.useLoaderData() as DirectoryEntry | null
 
-  if (!player) {
+  if (!entry) {
     return (
       <main className="mx-auto max-w-3xl p-6">
         <NotFoundPlayer playerId={playerId} />
@@ -46,24 +39,22 @@ function PlayerDetailPage() {
 
       <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
         <div className="flex items-baseline gap-3">
-          <h1 className="text-2xl font-semibold text-slate-900">{player.name}</h1>
-          <span className="font-mono text-lg text-slate-400">#{player.number}</span>
+          <h1 className="text-2xl font-semibold text-slate-900">{entry.displayName}</h1>
+          <span className="font-mono text-lg text-slate-400">#{entry.number}</span>
         </div>
 
         <dl className="mt-4 grid grid-cols-2 gap-4 text-sm">
           <div>
-            <dt className="font-medium text-slate-500">Position</dt>
-            <dd className="mt-1 text-slate-900">
-              {player.position === 'F' ? 'Forward' : player.position === 'D' ? 'Defense' : 'Goalie'}
-            </dd>
+            <dt className="font-medium text-slate-500">Role</dt>
+            <dd className="mt-1 text-slate-900">{entry.role}</dd>
           </div>
           <div>
             <dt className="font-medium text-slate-500">Team</dt>
-            <dd className="mt-1 text-slate-900">{player.team}</dd>
+            <dd className="mt-1 text-slate-900">{entry.teamName}</dd>
           </div>
           <div>
-            <dt className="font-medium text-slate-500">Player ID</dt>
-            <dd className="mt-1 font-mono text-slate-700">{player.id}</dd>
+            <dt className="font-medium text-slate-500">Entry ID</dt>
+            <dd className="mt-1 font-mono text-slate-700">{entry.id}</dd>
           </div>
         </dl>
       </div>

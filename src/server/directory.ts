@@ -60,3 +60,18 @@ export const getDirectoryEntries = createServerFn({ method: 'GET' })
       throw new Error('An unexpected error occurred.')
     }
   })
+
+export const getDirectoryEntryById = createServerFn({ method: 'GET' })
+  .validator((input: { id: string }) => input)
+  .handler(async ({ data }) => {
+    const supabase = getSupabaseServerClient()
+
+    const { data: row, error } = await supabase
+      .from('directory_entries')
+      .select('id, full_name, role, team, number, is_active')
+      .eq('id', data.id)
+      .single()
+
+    if (error || !row) return null
+    return mapRowToDirectoryEntry(row)
+  })
