@@ -36,6 +36,14 @@ export function AppNav() {
       >
         Games
       </Link>
+      <Link
+        to="/directory"
+        activeOptions={{ exact: true }}
+        className={linkBase}
+        activeProps={{ className: linkActive }}
+      >
+        Directory
+      </Link>
     </nav>
   )
 }
