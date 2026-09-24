@@ -1,10 +1,66 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { createScoutingEvent, updatePlayer } from './mutations'
+import {
+  createPlayer,
+  updatePlayer,
+  createGame,
+  updateGame,
+  createScoutingEvent,
+  updateEvent,
+} from './mutations'
 import { scoutingKeys } from './query-keys'
 import type { Database } from '../../types/database'
 
-type EventInsert = Database['public']['Tables']['scouting_events']['Insert']
+type PlayerInsert = Database['public']['Tables']['players']['Insert']
 type PlayerUpdate = Database['public']['Tables']['players']['Update']
+type GameInsert = Database['public']['Tables']['games']['Insert']
+type GameUpdate = Database['public']['Tables']['games']['Update']
+type EventInsert = Database['public']['Tables']['scouting_events']['Insert']
+type EventUpdate = Database['public']['Tables']['scouting_events']['Update']
+
+export function useCreatePlayer() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (input: PlayerInsert) => createPlayer(input),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: scoutingKeys.players() })
+    },
+  })
+}
+
+export function useUpdatePlayer() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ playerId, fields }: { playerId: string; fields: PlayerUpdate }) =>
+      updatePlayer(playerId, fields),
+    onSuccess: (_data, variables) => {
+      void queryClient.invalidateQueries({ queryKey: scoutingKeys.players() })
+      void queryClient.invalidateQueries({
+        queryKey: scoutingKeys.playerDetail(variables.playerId),
+      })
+    },
+  })
+}
+
+export function useCreateGame() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (input: GameInsert) => createGame(input),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: scoutingKeys.games() })
+    },
+  })
+}
+
+export function useUpdateGame() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ gameId, fields }: { gameId: string; fields: GameUpdate }) =>
+      updateGame(gameId, fields),
+    onSuccess: (_data, variables) => {
+      void queryClient.invalidateQueries({ queryKey: scoutingKeys.games() })
+    },
+  })
+}
 
 export function useCreateScoutingEvent() {
   const queryClient = useQueryClient()
@@ -28,17 +84,24 @@ export function useCreateScoutingEvent() {
   })
 }
 
-export function useUpdatePlayer() {
+export function useUpdateEvent() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({ playerId, fields }: { playerId: string; fields: PlayerUpdate }) =>
-      updatePlayer(playerId, fields),
+    mutationFn: ({ eventId, fields }: { eventId: string; fields: EventUpdate }) =>
+      updateEvent(eventId, fields),
     onSuccess: (_data, variables) => {
-      // Updated player -> refresh player lists and that player's detail
-      void queryClient.invalidateQueries({ queryKey: scoutingKeys.players() })
-      void queryClient.invalidateQueries({
-        queryKey: scoutingKeys.playerDetail(variables.playerId),
-      })
+      void queryClient.invalidateQueries({ queryKey: scoutingKeys.events() })
+      if (variables.fields.player_id) {
+        void queryClient.invalidateQueries({
+          queryKey: scoutingKeys.playerDetail(variables.fields.player_id),
+        })
+      }
+      if (variables.fields.game_id) {
+        void queryClient.invalidateQueries({
+          queryKey: scoutingKeys.playerEventCounts(variables.fields.game_id),
+        })
+      }
+      void queryClient.invalidateQueries({ queryKey: scoutingKeys.aggregates() })
     },
   })
 }

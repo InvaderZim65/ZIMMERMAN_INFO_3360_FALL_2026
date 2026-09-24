@@ -4,8 +4,12 @@ Each mutation hook, the write it calls, the query keys it invalidates, and why.
 
 | Hook | Write function | Keys invalidated | Scout reason |
 |------|---------------|-----------------|--------------|
-| `useCreateScoutingEvent` | `createScoutingEvent` | `scoutingKeys.events()`, `scoutingKeys.playerDetail(player_id)`, `scoutingKeys.playerEventCounts(game_id)`, `scoutingKeys.aggregates()` | New event must appear in event lists, update the player's detail view, and refresh per-player aggregate counts for that game |
-| `useUpdatePlayer` | `updatePlayer` | `scoutingKeys.players()`, `scoutingKeys.playerDetail(playerId)` | Changed player info must reflect in all player lists and the specific player's detail view |
+| `useCreatePlayer` | `createPlayer` | `scoutingKeys.players()` | New player must appear in all player list views |
+| `useUpdatePlayer` | `updatePlayer` | `scoutingKeys.players()`, `scoutingKeys.playerDetail(playerId)` | Changed player info refreshes lists and that player's detail |
+| `useCreateGame` | `createGame` | `scoutingKeys.games()` | New game must appear in game list views |
+| `useUpdateGame` | `updateGame` | `scoutingKeys.games()` | Changed game info refreshes game lists |
+| `useCreateScoutingEvent` | `createScoutingEvent` | `scoutingKeys.events()`, `scoutingKeys.playerDetail(player_id)`, `scoutingKeys.playerEventCounts(game_id)`, `scoutingKeys.aggregates()` | New event updates event lists, the related player detail, and per-player aggregate counts for that game |
+| `useUpdateEvent` | `updateEvent` | `scoutingKeys.events()`, `scoutingKeys.playerDetail(player_id)`, `scoutingKeys.playerEventCounts(game_id)`, `scoutingKeys.aggregates()` | Edited event refreshes event lists and aggregate counts that may have changed |
 
 ## Rules
 
