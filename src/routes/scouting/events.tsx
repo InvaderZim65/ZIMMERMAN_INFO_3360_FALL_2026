@@ -1,9 +1,12 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useState } from 'react'
+import { requireRole } from '../../lib/auth/require-auth'
 import { useEvents } from '../../lib/scouting/hooks'
 import { useCreateScoutingEvent } from '../../lib/scouting/mutation-hooks'
 
 export const Route = createFileRoute('/scouting/events')({
+  beforeLoad: () =>
+    requireRole(['admin', 'head_coach', 'assistant_scout', 'medical_staff']),
   component: EventsPage,
 })
 

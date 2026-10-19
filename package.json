@@ -6,7 +6,8 @@
     "dev": "vite dev",
     "build": "vite build",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "setup:test-users": "npx tsx src/test/setup-test-users.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.116.0",

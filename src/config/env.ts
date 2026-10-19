@@ -14,4 +14,10 @@ export const serverEnv = {
       throw new Error('Missing SUPABASE_SERVICE_ROLE_KEY in server environment')
     return val
   },
+  get SUPABASE_ANON_KEY(): string {
+    const val = process.env.SUPABASE_ANON_KEY ?? ''
+    if (!val)
+      throw new Error('Missing SUPABASE_ANON_KEY in server environment')
+    return val
+  },
 } as const

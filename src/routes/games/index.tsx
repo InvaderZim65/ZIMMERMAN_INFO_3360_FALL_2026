@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 import { validateGamesSearch } from '../../lib/searchSchemas'
+import { requireAuth } from '../../lib/auth/require-auth'
 import { listGames } from '../../server/directoryLoader'
 import type { SeedGame } from '../../data/hockeySeed'
 
@@ -9,6 +10,7 @@ const loadGames = createServerFn({ method: 'GET' }).handler(async () => {
 })
 
 export const Route = createFileRoute('/games/')({
+  beforeLoad: () => requireAuth(),
   validateSearch: (raw) => validateGamesSearch(raw as Record<string, unknown>),
   loader: () => loadGames(),
   component: GamesIndexPage,

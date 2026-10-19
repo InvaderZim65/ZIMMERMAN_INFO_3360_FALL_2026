@@ -1,9 +1,11 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { validatePlayersSearch } from '../../lib/searchSchemas'
+import { requireAuth } from '../../lib/auth/require-auth'
 import { getDirectoryEntries } from '../../server/directory'
 import type { DirectoryEntry } from '../../server/directory'
 
 export const Route = createFileRoute('/players/')({
+  beforeLoad: () => requireAuth(),
   validateSearch: (raw) => validatePlayersSearch(raw as Record<string, unknown>),
   loaderDeps: ({ search }) => ({ position: search.position }),
   loader: async ({ deps }) => {

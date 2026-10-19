@@ -1,8 +1,10 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useState } from 'react'
+import { requireRole } from '../../lib/auth/require-auth'
 import { usePlayerEventCounts } from '../../lib/scouting/hooks'
 
 export const Route = createFileRoute('/scouting/aggregates')({
+  beforeLoad: () => requireRole(['admin', 'head_coach', 'assistant_scout']),
   component: AggregatesPage,
 })
 

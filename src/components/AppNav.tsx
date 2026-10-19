@@ -1,4 +1,5 @@
 import { Link } from '@tanstack/react-router'
+import { AuthStatus } from './AuthStatus'
 
 const linkBase =
   'rounded-md px-2 py-1 text-slate-700 transition hover:bg-slate-100 hover:text-slate-900'
@@ -8,7 +9,7 @@ export function AppNav() {
   return (
     <nav
       aria-label="Main"
-      className="flex flex-wrap gap-4 border-b border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium"
+      className="flex flex-wrap items-center gap-4 border-b border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium"
     >
       <Link
         to="/"
@@ -44,6 +45,17 @@ export function AppNav() {
       >
         Directory
       </Link>
+      <Link
+        to="/medical"
+        activeOptions={{ exact: false }}
+        className={linkBase}
+        activeProps={{ className: linkActive }}
+      >
+        Medical
+      </Link>
+      <div className="ml-auto">
+        <AuthStatus />
+      </div>
     </nav>
   )
 }

@@ -41,6 +41,17 @@ function HomePage() {
           <p className="text-sm text-slate-600">Games on schedule</p>
         </Link>
       </div>
+
+      <p className="mt-6 text-sm text-slate-500">
+        Not signed in?{' '}
+        <Link
+          to="/login"
+          className="text-sky-700 underline underline-offset-2"
+        >
+          Sign in
+        </Link>{' '}
+        to access all features.
+      </p>
     </main>
   )
 }

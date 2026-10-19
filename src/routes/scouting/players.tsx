@@ -1,8 +1,10 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useState } from 'react'
+import { requireAuth } from '../../lib/auth/require-auth'
 import { usePlayers } from '../../lib/scouting/hooks'
 
 export const Route = createFileRoute('/scouting/players')({
+  beforeLoad: () => requireAuth(),
   component: PlayersPage,
 })
 

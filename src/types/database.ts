@@ -72,6 +72,7 @@ export type Database = {
           period: number | null
           clock_seconds: number | null
           notes: string | null
+          is_medical: boolean
           created_at: string
         }
         Insert: {
@@ -82,6 +83,7 @@ export type Database = {
           period?: number | null
           clock_seconds?: number | null
           notes?: string | null
+          is_medical?: boolean
           created_at?: string
         }
         Update: {
@@ -92,6 +94,7 @@ export type Database = {
           period?: number | null
           clock_seconds?: number | null
           notes?: string | null
+          is_medical?: boolean
           created_at?: string
         }
         Relationships: [
@@ -111,11 +114,44 @@ export type Database = {
           },
         ]
       }
+      player_medical_notes: {
+        Row: {
+          id: string
+          player_id: string
+          note: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          player_id: string
+          note: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          player_id?: string
+          note?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "player_medical_notes_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "players"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      current_user_role: {
+        Args: Record<string, never>
+        Returns: string
+      }
       player_event_counts_for_game: {
         Args: {
           p_game_id: string
@@ -129,7 +165,7 @@ export type Database = {
       }
     }
     Enums: {
-      [_ in never]: never
+      app_role: 'admin' | 'head_coach' | 'assistant_scout' | 'video_analyst' | 'medical_staff'
     }
     CompositeTypes: {
       [_ in never]: never

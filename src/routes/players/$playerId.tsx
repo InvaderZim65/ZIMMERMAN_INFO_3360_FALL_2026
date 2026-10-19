@@ -1,10 +1,12 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { parsePlayerIdParam } from '../../lib/playerParams'
+import { requireAuth } from '../../lib/auth/require-auth'
 import { getDirectoryEntryById } from '../../server/directory'
 import { NotFoundPlayer } from '../../components/NotFoundPlayer'
 import type { DirectoryEntry } from '../../server/directory'
 
 export const Route = createFileRoute('/players/$playerId')({
+  beforeLoad: () => requireAuth(),
   params: {
     parse: (raw) => ({
       playerId: parsePlayerIdParam(raw.playerId),
