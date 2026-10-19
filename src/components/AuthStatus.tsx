@@ -25,6 +25,8 @@ export function AuthStatus() {
 
   async function handleSignOut() {
     await supabase.auth.signOut()
+    // Clear cached beforeLoad results so protected routes redirect to login
+    await router.invalidate()
     router.navigate({ to: '/login' })
   }
 

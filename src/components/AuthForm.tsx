@@ -22,6 +22,8 @@ export function AuthForm() {
       setError(err.message)
       return
     }
+    // Clear cached beforeLoad results so protected routes re-check the new session
+    await router.invalidate()
     router.navigate({ to: '/' })
   }
 
@@ -35,6 +37,8 @@ export function AuthForm() {
       setError(err.message)
       return
     }
+    // Clear cached beforeLoad results so protected routes re-check the new session
+    await router.invalidate()
     router.navigate({ to: '/' })
   }
 
