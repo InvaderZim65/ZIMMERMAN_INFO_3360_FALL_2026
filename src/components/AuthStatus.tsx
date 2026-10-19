@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from '@tanstack/react-router'
 import { supabase } from '../lib/supabase/client'
+import { signOut } from '../lib/auth/sign-out'
 import type { User } from '@supabase/supabase-js'
 
 export function AuthStatus() {
@@ -24,7 +25,7 @@ export function AuthStatus() {
   }, [])
 
   async function handleSignOut() {
-    await supabase.auth.signOut()
+    await signOut()
     // Clear cached beforeLoad results so protected routes redirect to login
     await router.invalidate()
     router.navigate({ to: '/login' })

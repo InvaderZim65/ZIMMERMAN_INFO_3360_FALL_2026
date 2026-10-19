@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useRouter } from '@tanstack/react-router'
-import { supabase } from '../lib/supabase/client'
+import { signIn, signUp } from '../lib/auth/sign-in'
 
 export function AuthForm() {
   const router = useRouter()
@@ -13,13 +13,10 @@ export function AuthForm() {
     e.preventDefault()
     setError(null)
     setLoading(true)
-    const { error: err } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    })
+    const result = await signIn(email, password)
     setLoading(false)
-    if (err) {
-      setError(err.message)
+    if (!result.ok) {
+      setError(result.error)
       return
     }
     // Clear cached beforeLoad results so protected routes re-check the new session
@@ -31,10 +28,10 @@ export function AuthForm() {
     e.preventDefault()
     setError(null)
     setLoading(true)
-    const { error: err } = await supabase.auth.signUp({ email, password })
+    const result = await signUp(email, password)
     setLoading(false)
-    if (err) {
-      setError(err.message)
+    if (!result.ok) {
+      setError(result.error)
       return
     }
     // Clear cached beforeLoad results so protected routes re-check the new session
