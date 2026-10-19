@@ -1,3 +1,5 @@
+// Browser Supabase client -- uses public VITE_ env vars only.
+// See docs/security/auth-session-plan.md for the session flow.
 import { createClient } from '@supabase/supabase-js'
 import type { Database } from '../../types/database'
 
