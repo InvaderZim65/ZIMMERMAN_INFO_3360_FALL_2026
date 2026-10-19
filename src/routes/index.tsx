@@ -1,5 +1,7 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
+import { useState, useEffect } from 'react'
 import { getDirectoryEntries } from '../server/directory'
+import { supabase } from '../lib/supabase/client'
 
 const SCHEDULE_COUNT = 11 // static game count shown on homepage
 
@@ -13,6 +15,17 @@ export const Route = createFileRoute('/')({
 
 function HomePage() {
   const { playerCount, gameCount } = Route.useLoaderData()
+  const [signedIn, setSignedIn] = useState<boolean | null>(null)
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      setSignedIn(!!data.session)
+    })
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSignedIn(!!session)
+    })
+    return () => subscription.unsubscribe()
+  }, [])
 
   return (
     <main className="mx-auto max-w-3xl p-6">
@@ -42,16 +55,18 @@ function HomePage() {
         </Link>
       </div>
 
-      <p className="mt-6 text-sm text-slate-500">
-        Not signed in?{' '}
-        <Link
-          to="/login"
-          className="text-sky-700 underline underline-offset-2"
-        >
-          Sign in
-        </Link>{' '}
-        to access all features.
-      </p>
+      {signedIn === false && (
+        <p className="mt-6 text-sm text-slate-500">
+          Not signed in?{' '}
+          <Link
+            to="/login"
+            className="text-sky-700 underline underline-offset-2"
+          >
+            Sign in
+          </Link>{' '}
+          to access all features.
+        </p>
+      )}
     </main>
   )
 }
