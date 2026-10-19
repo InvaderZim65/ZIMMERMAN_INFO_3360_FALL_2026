@@ -40,6 +40,7 @@ function MedicalPage() {
   }
 
   const notes = notesResult?.data ?? []
+  const playerMap = new Map((players ?? []).map((p) => [p.id, p.full_name]))
 
   return (
     <main className="mx-auto max-w-3xl p-6">
@@ -121,7 +122,7 @@ function MedicalPage() {
           <table className="w-full text-left text-sm">
             <thead className="bg-slate-50 text-xs font-medium uppercase text-slate-500">
               <tr>
-                <th className="px-4 py-2">Player ID</th>
+                <th className="px-4 py-2">Player</th>
                 <th className="px-4 py-2">Note</th>
                 <th className="px-4 py-2">Created</th>
               </tr>
@@ -129,8 +130,8 @@ function MedicalPage() {
             <tbody className="divide-y divide-slate-100">
               {notes.map((n) => (
                 <tr key={n.id} className="hover:bg-slate-50">
-                  <td className="px-4 py-2 font-mono text-xs text-slate-600">
-                    {n.player_id}
+                  <td className="px-4 py-2 text-slate-900">
+                    {playerMap.get(n.player_id) ?? 'Unknown'}
                   </td>
                   <td className="px-4 py-2 text-slate-900">{n.note}</td>
                   <td className="px-4 py-2 text-xs text-slate-500">
