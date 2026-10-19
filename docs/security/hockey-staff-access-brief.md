@@ -41,7 +41,7 @@ Northline Hockey's staff breaks into three functional groups that interact with 
 
 **Medical data is sealed from non-medical roles.** This is the hardest boundary in the system. Medical notes (`player_medical_notes`) and medical-flagged scouting events (`is_medical = true`) must be invisible to coaching and scouting staff. Only admin and medical staff should ever see this data. This matches how the RLS policies are already built.
 
-**Scouting notes are limited to relevant roles.** Scouts, coaches, and medical staff can see non-medical scouting observations. Video analysts cannot -- their role is film review, not prospect evaluation. Scouting data should not leak outside the organization under any circumstances.
+**Scouting notes are limited to coaching and scouting roles.** Scouts and coaches can see non-medical scouting observations. Video analysts and medical staff cannot -- video analysts do film review, not prospect evaluation, and medical staff have no role in scouting decisions. Scouting data should not leak outside the organization under any circumstances.
 
 **Player records and game schedules are broadly readable** within the authenticated staff. Everyone on staff needs to know who the players are and when games happen. Write access is restricted to coaching and admin roles.
 
@@ -55,14 +55,14 @@ Northline Hockey's staff breaks into three functional groups that interact with 
 
 **From the scouting perspective:** "We need to log observations during games and see the scouting reports we and other scouts have filed. We need read access to player profiles and the schedule so we know who we are watching and when. We should not be editing rosters or schedules, and we definitely should not see medical notes."
 
-**From the medical perspective:** "We need full control over medical records and the ability to see injury-flagged scouting events so we can correlate what happened on the ice with what we see in the training room. We need read access to the roster and schedule. We should not be editing game schedules or player biographical info -- that is an admin or coaching function."
+**From the medical perspective:** "We need full control over medical records. We need read access to the roster and schedule so we know who our players are and when they play. We should not be seeing scouting reports -- that is between the scouts and coaching. We should not be editing game schedules or player biographical info -- that is an admin or coaching function."
 
 ---
 
 ## 6. Summary of access boundaries
 
 - Medical data flows only to admin + medical staff. No exceptions.
-- Scouting data flows to coaching, scouting, and medical staff. Not to video analysts.
+- Scouting data flows to coaching and scouting staff only. Not to video analysts or medical staff.
 - Player/game data is readable by all authenticated staff. Writable by coaching + admin only.
 - Deny by default: if a role is not explicitly granted access, it gets nothing.
 - Unauthenticated users see zero data. The database enforces this, not just the UI.

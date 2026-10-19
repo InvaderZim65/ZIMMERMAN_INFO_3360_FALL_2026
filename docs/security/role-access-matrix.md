@@ -13,7 +13,7 @@ Deny-by-default: any data category or operation not listed below is **denied** f
 
 | Data Category | Coaching | Scouting | Medical |
 |---------------|----------|----------|---------|
-| Scouting notes (non-medical) | Read -- team-wide | Read + Write -- own | Read -- team-wide |
+| Scouting notes (non-medical) | Read -- team-wide | Read + Write -- own | Deny |
 | Medical / sports-science data | Deny | Deny | Read + Write -- caseload |
 | Game schedule | Read + Write -- team-wide | Read -- team-wide | Read -- team-wide |
 | Player roster | Read + Write -- team-wide | Read -- team-wide | Read -- team-wide |
@@ -39,7 +39,7 @@ Deny-by-default: any data category or operation not listed below is **denied** f
 |------|-----|
 | Coaching + Scouting notes = Read | Coaches consume scouting intel but do not author reports. |
 | Scouting + Scouting notes = Read + Write (own) | Scouts create observations and can review their own past entries. They cannot edit another scout's notes. |
-| Medical + Scouting notes = Read | Medical staff read injury-adjacent scouting observations for correlation with training room findings. They do not author scouting reports. |
+| Medical + Scouting notes = Deny | Medical staff have no role in scouting decisions. Scouting observations stay within the coaching and scouting pipeline. |
 | Medical + Medical data = Read + Write (caseload) | Medical staff have full control over health records for players in their care. They cannot see another provider's private notes unless the patient is shared. |
 | Coaching + Medical data = Deny | Coaches must not see injury details, concussion history, or rehab timelines. They receive only cleared/not-cleared status through a separate channel. |
 | Scouting + Medical data = Deny | Scouts have no role in player health decisions. |
