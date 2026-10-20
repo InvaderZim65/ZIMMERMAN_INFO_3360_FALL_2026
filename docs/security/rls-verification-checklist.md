@@ -2,71 +2,104 @@
 
 **Sprint:** 4 (Auth, RLS, Roles, Medical Gating)
 **Author:** Zach Zimmerman
-**Date:** 2026-10-16
+**Date:** 2026-10-20
+**Reference:** docs/security/rls-policy-spec.md
 
 ---
 
 ## Purpose
 
-This checklist documents the Row Level Security (RLS) verification steps for the Northline Hockey application. Each item confirms that Supabase RLS policies enforce the expected access boundaries per role.
+Walk through each staff role and verify that the session gate and RLS policies enforce the correct access boundaries. Each scenario describes what to do, what a pass looks like, and what a leak looks like. If a check fails, the failure loop section tells you which file to fix.
 
 ---
 
-## Role-based read access
+## Pre-check: server path verifies session
 
-- [x] **admin** can SELECT from all tables (players, games, scouting_events, player_medical_notes)
-- [x] **head_coach** can SELECT from players, games, and non-medical scouting_events
-- [x] **head_coach** CANNOT see scouting_events where is_medical = true
-- [x] **assistant_scout** can SELECT from players, games, and non-medical scouting_events
-- [x] **assistant_scout** CANNOT see scouting_events where is_medical = true
-- [x] **video_analyst** can SELECT from players and games only
-- [x] **video_analyst** gets zero rows from scouting_events and player_medical_notes
-- [x] **medical_staff** can SELECT from players, games, scouting_events (including is_medical = true), and player_medical_notes
+Before testing RLS by role, confirm that `src/server/scouting-notes.ts` calls `requireSession()` before querying. This ensures protection is enforced on the server, not just hidden in the UI.
 
-## Medical data gating
+- [ ] Open `src/server/scouting-notes.ts` and confirm the first line inside the handler calls `requireSession()` (from `src/lib/auth/require-session.ts`)
+- [ ] Confirm `requireSession()` throws when the session is missing or invalid (does not return null)
 
-- [x] player_medical_notes is only visible to admin and medical_staff
-- [x] Scouting events with is_medical = true are hidden from head_coach
-- [x] Scouting events with is_medical = true are hidden from assistant_scout
-- [x] Scouting events with is_medical = true are hidden from video_analyst
-- [x] Scouting events with is_medical = true are visible to admin and medical_staff
+---
 
-## Unauthenticated access
+## Scenario 1: Signed-out user (no session)
 
-- [x] Unauthenticated users (no session / anon key only) get zero rows from players
-- [x] Unauthenticated users get zero rows from games
-- [x] Unauthenticated users get zero rows from scouting_events
-- [x] Unauthenticated users get zero rows from player_medical_notes
+**Action:** Open the scouting path in an incognito window without signing in.
 
-## Write operation restrictions
+| Check | Pass | Leak |
+|-------|------|------|
+| Visit /scouting | Redirected to /login or receives an error; zero data returned | Scouting notes are visible without authentication |
+| Direct API call to scouting_events | Zero rows returned | Rows returned without a session token |
+| Direct API call to player_medical_notes | Zero rows returned | Medical data returned to an anonymous caller |
 
-- [x] **players INSERT** restricted to admin and head_coach
-- [x] **players UPDATE** restricted to admin and head_coach
-- [x] **players DELETE** restricted to admin only
-- [x] **games INSERT** restricted to admin and head_coach
-- [x] **games UPDATE** restricted to admin and head_coach
-- [x] **games DELETE** restricted to admin only
-- [x] **scouting_events INSERT** restricted to admin and assistant_scout
-- [x] **scouting_events UPDATE** restricted to admin and head_coach
-- [x] **scouting_events DELETE** restricted to admin only
-- [x] **player_medical_notes INSERT** restricted to admin and medical_staff
-- [x] **player_medical_notes UPDATE** restricted to admin and medical_staff
-- [x] **player_medical_notes DELETE** restricted to admin and medical_staff
+---
+
+## Scenario 2: Head coach (coaching role)
+
+**Action:** Sign in as coach@test.hockey (head_coach role). Navigate to the scouting path.
+
+| Check | Pass | Leak |
+|-------|------|------|
+| View scouting notes | Non-medical scouting events are visible | Zero events shown (under-grant) or medical-flagged events visible (over-grant) |
+| Check for medical-flagged events | Events with is_medical = true are absent from results | Medical-flagged scouting events appear in the list |
+| Query player_medical_notes directly | Zero rows returned | Medical notes are readable by the coach |
+| Read players and games | Full roster and schedule visible | Missing data (under-grant) |
+
+---
+
+## Scenario 3: Assistant scout (scouting role)
+
+**Action:** Sign in as scout@test.hockey (assistant_scout role). Navigate to the scouting path.
+
+| Check | Pass | Leak |
+|-------|------|------|
+| View scouting notes | Non-medical scouting events are visible | Medical-flagged events visible (over-grant) |
+| Insert a scouting event | Event is created successfully | Insert denied (under-grant) or inserted into wrong table |
+| Check for medical-flagged events | Events with is_medical = true are absent | Medical-flagged events appear |
+| Query player_medical_notes directly | Zero rows returned | Medical notes readable by the scout |
+| Try to insert/update a player | Operation denied | Scout can modify roster data |
+
+---
+
+## Scenario 4: Medical staff (medical role)
+
+**Action:** Sign in as medical@test.hockey (medical_staff role). Navigate to the medical notes area.
+
+| Check | Pass | Leak |
+|-------|------|------|
+| View medical notes | All medical notes visible, read and write | Medical notes missing or read-only (under-grant) |
+| View medical-flagged scouting events | Events with is_medical = true are visible | Medical-flagged events hidden from medical staff |
+| View non-medical scouting events | Visible per current policy (accepted minor over-grant from spec) | N/A |
+| Read players and games | Full roster and schedule visible | Missing data |
+| Try to insert/update a player | Operation denied | Medical staff can modify roster data |
+
+---
+
+## Failure loop
+
+If any check above fails, diagnose using this order:
+
+1. **Session not enforced:** Fix `src/lib/auth/require-session.ts`. Ensure `requireSession()` throws on missing/invalid session.
+2. **Scouting path returns data without session:** Fix `src/server/scouting-notes.ts`. Ensure it calls `requireSession()` before querying.
+3. **Wrong rows returned for a role:** Fix `supabase/migrations/20250321000000_hockey_staff_rls.sql`. Compare the USING clause against `docs/security/rls-policy-spec.md` table by table.
+4. **Medical data visible to non-medical role:** Check the `scouting_events_select` policy compound condition and confirm `player_medical_notes` policies only allow admin and medical_staff.
+
+After fixing, re-run the scenario that failed. Do not loosen policies or delete tests to get a green result.
+
+---
 
 ## Verification method
 
-All checks above were validated by the automated break test suite:
+Manual walkthrough using test accounts (see docs/security/sprint-4-handoff.md for credentials), plus automated break test suite:
 
 ```
 npx vitest run src/test/rls-break-tests.test.ts
 ```
 
-Results are documented in `docs/break-test-results.md`.
-
 ---
 
 ## Notes
 
-- RLS policies use the `current_user_role()` SQL function which reads the role from the JWT's `app_metadata`.
+- RLS policies use `current_user_role()` which reads from the JWT `app_metadata`, not a client-sent value.
 - The server Supabase client uses the ANON key (not service_role), so RLS applies to all server-side queries.
-- The `is_medical` boolean on scouting_events is enforced at the database level, not the application level. Even direct database queries respect this boundary.
+- The `is_medical` boolean on scouting_events is enforced at the database level. Even direct API queries respect this boundary.
