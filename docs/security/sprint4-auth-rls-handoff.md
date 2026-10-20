@@ -74,7 +74,37 @@ Five test accounts exist for validating access:
 4. **Try to access medical notes** -- only medical and admin should see data. Coach, scout, and analyst should get nothing.
 5. **Try to write** (add a player, log a scouting event) -- only roles with write permission should succeed. Others should get an error.
 
-Automated verification: run `npx vitest run src/test/rls-break-tests.test.ts` to execute the full break test suite. Results are documented in `docs/break-test-results.md`.
+**Automated verification:**
+
+1. Session helper tests: `npx vitest run src/lib/auth/require-session.test.ts`
+2. RLS break tests: `npx vitest run src/test/rls-break-tests.test.ts`
+3. Walk through the role-by-role checklist in `docs/security/rls-verification-checklist.md` using the test accounts above.
+4. Cross-reference each policy against `docs/security/rls-policy-spec.md`.
+5. Confirm the RLS migration at `supabase/migrations/20250321000000_hockey_staff_rls.sql` matches the spec.
+
+---
+
+## How roles are assigned today
+
+There is no admin UI for role management. Roles are assigned manually through the Supabase Admin API or dashboard:
+
+1. Create the user in Supabase Auth (email + password).
+2. Set the user's role in `app_metadata` using the Admin API: `supabase.auth.admin.updateUserById(userId, { app_metadata: { role: 'head_coach' } })`. Valid roles: `admin`, `head_coach`, `assistant_scout`, `video_analyst`, `medical_staff`.
+3. Have the user sign in. The JWT will contain the role in `app_metadata`, and RLS policies will enforce access from that point forward.
+4. Re-run the verification checklist (`docs/security/rls-verification-checklist.md`) after adding a new user to confirm their access matches the expected boundaries.
+
+This process requires someone with the service-role key. Self-service role management is not available and should not be promised to stakeholders.
+
+---
+
+## Residual risks
+
+These risks are accepted or deferred, not resolved:
+
+1. **Wrong role assignment** -- If an admin sets the wrong role on a user (e.g., gives a scout the medical_staff role), that user will see medical data. There is no approval workflow or second-person verification for role changes.
+2. **Service-key misuse** -- The Supabase service-role key bypasses all RLS policies. If this key leaks or is used in client-side code, all access boundaries are void. The key must stay in server-side environment variables only.
+3. **New tables without RLS** -- Any new table added to the database will not have RLS enabled by default. If a developer creates a table and forgets to add policies, that table is open to all authenticated users. Every new migration must include RLS enablement and policies.
+4. **Session token lifetime** -- JWTs are valid until they expire. If a user's role is changed, the old JWT (with the old role) remains valid until expiration. Forcing a re-sign-in after role changes is not implemented.
 
 ---
 
@@ -90,14 +120,15 @@ These items are not done in this sprint and should not be treated as shipped:
 
 ---
 
-## Next sprint preview
+## Next-topic work (required before shipping)
 
-| Track | Goal | Builds on |
-|-------|------|-----------|
-| UI role awareness | Show/hide navigation and page sections based on the logged-in user's role | Session extraction + role data from JWT |
-| Account management | Password reset flow, admin user list page | Supabase Auth infrastructure |
-| Audit trail | Log data access events for compliance review | RLS + session verification |
-| Production deploy | Configure Vercel environment variables, cookie settings, and domain | Auth + RLS proven locally |
+| Item | Why it matters | Builds on |
+|------|---------------|-----------|
+| Admin role assignment UI | Currently requires service-role key and manual API calls. An admin screen reduces misassignment risk. | Supabase Auth + app_metadata role pattern |
+| Playwright role journeys | Automated end-to-end tests that sign in as each role and verify visible/hidden data matches the access matrix. Catches regressions that unit tests miss. | Session helpers + RLS migration + test accounts |
+| CI/Vercel safeguards | Pre-deploy checks that confirm RLS is enabled on all tables, environment variables are set, and the service-role key is not exposed in client bundles. | Vercel project + GitHub Actions |
+| UI role awareness | Show/hide navigation and page sections based on the logged-in user's role. Improves UX but does not replace RLS enforcement. | Session extraction + role data from JWT |
+| Password reset flow | Supabase Auth supports recovery, but there is no UI. Needed before real staff onboarding. | Supabase Auth infrastructure |
 
 ---
 
