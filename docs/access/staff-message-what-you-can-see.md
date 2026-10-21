@@ -1,88 +1,92 @@
-# What You Can See in the System
-
-**To: All Northline Hockey Staff**
-**From: System Administration**
-**Date: October 2026**
-
----
+# What you can see
 
 Hi everyone,
 
-We want to make sure you know exactly what information you can and cannot access in the hockey operations system. Your access is based on your role, and the system enforces these limits automatically. You do not need to do anything special -- just log in with your account and the system handles the rest.
+Welcome to the Northline Hockey operations system. This note tells you what information you can open and what stays closed, based on your job. You do not need to do anything special. Just sign in with your account and the system takes care of the rest.
+
+If anything below does not match what you see on your screen, contact the system administrator right away.
 
 ---
 
-## Coaches
+## If you are an assistant scout
 
 You can see:
-- The full player roster (names, positions, jersey numbers, team info)
-- The complete game schedule (opponents, dates, venues)
-- All scouting reports filed by scouts (game observations, prospect evaluations)
-- You can add and edit player records and game schedule entries
+- The full player roster: names, positions, jersey numbers, and team information
+- The complete game schedule: opponents, dates, and venues
+- Scouting reports filed by you and other scouts (game observations and prospect evaluations)
+- You can log new scouting observations during games
 
 You cannot see:
 - Medical notes, injury reports, or rehab timelines
-- Any scouting observation that has been flagged as medical
+- Any scouting observation that has been marked as related to a health or sports-science matter
+- You cannot add, edit, or remove player records or game schedule entries
 
-If you need to know whether a player is available to play, the medical team will communicate that to you directly. The system does not show you the medical details behind that decision.
+On shared scouting or game screens: Health and injury notes will not show up for you on any shared scouting or game screen. Even when you are looking at scouting reports alongside other staff, medical information will not appear in your view.
 
 ---
 
-## Scouts
+## If you are a video analyst
 
 You can see:
-- The player roster (read-only -- you cannot edit it)
-- The game schedule (read-only)
+- The player roster: names, positions, jersey numbers, and team information
+- The game schedule: opponents, dates, and venues
+
+That is all. Your access is focused on knowing who the players are and when games happen so you can organize film review.
+
+You cannot see:
+- Scouting reports or observations of any kind
+- Medical notes, injury reports, or rehab timelines
+- Any health or sports-science information
+- You cannot add, change, or remove any records in the system
+
+On shared scouting or game screens: Health and injury notes will not show up for you on any shared screen. You will not see scouting data on those screens either, since scouting reports are outside your access.
+
+---
+
+## If you already work here
+
+### Coaches
+
+You can see:
+- The full player roster, and you can add or edit player records
+- The complete game schedule, and you can add or edit schedule entries
+- All scouting reports filed by scouts (game observations and prospect evaluations)
+
+You cannot see:
+- Medical notes, injury reports, or rehab timelines
+- Any scouting observation that has been marked as related to a health or sports-science matter
+
+If you need to know whether a player is available, the medical team will tell you through normal channels. The system does not show you the medical details behind that decision.
+
+### Scouts
+
+You can see:
+- The player roster (you can look but not edit)
+- The game schedule (you can look but not edit)
 - All non-medical scouting reports, including your own and those filed by other scouts
 - You can log new scouting observations during games
 
 You cannot see:
-- Medical notes or injury information
-- Any scouting observation flagged as medical
+- Medical notes, injury reports, or rehab timelines
+- Any scouting observation that has been marked as related to a health or sports-science matter
 
-You also cannot change player records or the game schedule. That is handled by coaching and administration.
+You cannot change player records or the game schedule. That is handled by coaching and administration.
 
----
-
-## Video Analysts
+### Medical and sports-science staff
 
 You can see:
-- The player roster (read-only)
-- The game schedule (read-only)
-
-That is it. Your access is focused on knowing who the players are and when games happen so you can organize film correctly.
-
-You cannot see:
-- Scouting reports or observations
-- Medical notes or injury information
-
-You cannot add, change, or delete any records in the system.
-
----
-
-## Medical Staff
-
-You can see:
-- The player roster (read-only)
-- The game schedule (read-only)
-- All medical notes and injury records -- you can read, create, and edit these
-- Scouting observations that have been flagged as having medical relevance
+- The player roster (you can look but not edit)
+- The game schedule (you can look but not edit)
+- All medical notes and injury records, and you can create and edit these
+- Scouting observations that have been flagged as having health or sports-science relevance
 
 You cannot see:
 - Non-medical scouting strategy reports (those stay between coaching and scouting)
 
-You also cannot change player biographical information or the game schedule.
+You cannot change player biographical information or the game schedule.
 
 ---
 
-## For Everyone
+## If you are not sure
 
-- You must be logged in to see anything. If you are not signed in, the system shows you nothing.
-- These limits are enforced by the database, not just the screen layout. Even if something looks like it might be accessible, the system blocks it if your role does not allow it.
-- If you believe your access level is wrong (for example, you should be able to see something you cannot, or you are seeing something you should not), contact the system administrator right away.
-- Do not share your login credentials with anyone. Your account is tied to your specific role and access level.
-
-If you have questions about what you can access or why, reach out to administration.
-
-Thanks,
-Northline Hockey System Admin
+If you believe your access level is wrong, or if you are seeing something you should not, contact the system administrator. Do not share your login with anyone else. Your account is tied to your specific role and access level. We will never ask for your password outside of the sign-in screen.
