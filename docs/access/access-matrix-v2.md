@@ -1,117 +1,88 @@
 # Access Matrix v2 -- All Five Roles
 
 **Tutorial:** 2 (Break Your Own Gate)
+**Step:** 5
 **Author:** Zach Zimmerman
-**Date:** 2026-10-20
+**Date:** 2026-10-21
 
-Related: [docs/security/role-access-matrix.md](../security/role-access-matrix.md) (v1), [docs/security/access-matrix-v2.md](../security/access-matrix-v2.md) (Sprint 4 v2)
-Migration: `supabase/migrations/003_auth_rls.sql`, `supabase/migrations/20260418120000_least_privilege_new_staff_roles.sql`
+This file is the contract for a later database change. It contains no SQL and no migration. The database change will be written separately after this matrix is reviewed and accepted.
 
----
-
-## Purpose
-
-This matrix explicitly maps all five application roles against every data category and operation. The Sprint 4 matrix covered the three core staff groups (coaching, scouting, medical) and noted video_analyst and assistant_scout in passing. This version makes every cell explicit so there is no ambiguity about what any role can or cannot do.
+**Sources:** [docs/access/new-roles-brief.md](new-roles-brief.md), [docs/access/overgrant-audit.md](overgrant-audit.md), [docs/access/service-role-key-rule.md](service-role-key-rule.md)
 
 ---
 
-## Role definitions
+## Matrix
 
-| SQL Role | Staff group | Description |
-|----------|------------|-------------|
-| `admin` | Administration | Full access to all tables and operations. Manages user accounts and role assignments. |
-| `head_coach` | Coaching | Runs practices, sets lineups, makes personnel decisions. Reads scouting reports. No medical access. |
-| `assistant_scout` | Scouting | Attends games, logs observations, reviews scouting pipeline. No medical access. No roster/schedule editing. |
-| `video_analyst` | Video | Reviews game film, tags plays. Read-only access to roster and schedule. No scouting or medical data. |
-| `medical_staff` | Medical | Manages injury records and medical observations. No scouting strategy data. No roster/schedule editing. |
+### Scouting notes (non-medical scouting events)
 
----
+| Role | Action | Because |
+|------|--------|---------|
+| Coaching | See (unchanged from earlier matrix) | Coaches consume scouting reports to make personnel and game-day decisions. |
+| Scouting | See and add (unchanged from earlier matrix) | Scouts attend games, log observations, and review reports filed by themselves and other scouts. |
+| Assistant scout | See and add | Assistant scouts attend games and log observations the same way the scouting role does, because their job is evaluating prospects and recording what they see. |
+| Video analyst | See only | Video analysts review game film alongside scouting observations so they can align their film notes with what scouts reported on the ice. |
+| Medical | Deny (unchanged from earlier matrix) | Medical staff have no role in scouting decisions. Scouting observations stay in the coaching and scouting pipeline. |
 
-## Data category matrix
+### Game data (schedules, scores, opponents)
 
-| Data category | admin | head_coach | assistant_scout | video_analyst | medical_staff |
-|---------------|-------|------------|-----------------|---------------|---------------|
-| Players (roster) | Read + Write | Read + Write | Read | Read | Read |
-| Games (schedule) | Read + Write | Read + Write | Read | Read | Read |
-| Scouting events (non-medical) | Read + Write | Read | Read + Write (own) | Deny | Deny* |
-| Scouting events (medical) | Read + Write | Deny | Deny | Deny | Read |
-| Player medical notes | Read + Write | Deny | Deny | Deny | Read + Write |
+| Role | Action | Because |
+|------|--------|---------|
+| Coaching | See, add, and change (unchanged from earlier matrix) | Coaches manage the schedule and record game results. |
+| Scouting | See only (unchanged from earlier matrix) | Scouts need the schedule to know which games to attend but do not manage it. |
+| Assistant scout | See only | Assistant scouts need the schedule to know when and where to scout, but schedule management is a coaching function. |
+| Video analyst | See only | Video analysts need game dates and opponents to organize their film review, but they do not manage the schedule. |
+| Medical | See only (unchanged from earlier matrix) | Medical staff need the schedule to plan coverage and travel but do not manage it. |
 
-*Medical staff can see non-medical scouting events in the current SQL implementation (they are included in the SELECT policy for scouting_events to enable viewing medical-flagged events). This is an accepted minor over-grant documented in the Sprint 4 matrix. The strict matrix says Deny for medical staff on non-medical scouting, but the SQL groups them into the same SELECT to avoid complexity.
+### Medical records (player_medical_notes)
 
----
+| Role | Action | Because |
+|------|--------|---------|
+| Coaching | Deny (unchanged from earlier matrix) | Coaches must not see injury details, concussion history, or rehab timelines. They receive only cleared/not-cleared status through a separate channel. |
+| Scouting | Deny (unchanged from earlier matrix) | Scouts have no role in player health decisions. |
+| Assistant scout | Deny | Assistant scouts have no reason to access medical data. Their job is game observation, not player health. |
+| Video analyst | Deny | Video analysts review film, not medical records. No medical data is relevant to their work. |
+| Medical | See, add, and change (unchanged from earlier matrix) | Medical staff are the owners of health data. They create injury reports, update rehab timelines, and manage return-to-play decisions. |
 
-## Per-table operation matrix
+### Sports-science data (injury-flagged scouting events where is_medical = true)
 
-### `players`
+| Role | Action | Because |
+|------|--------|---------|
+| Coaching | Deny (unchanged from earlier matrix) | Sports-science observations contain injury indicators that coaches must not see. Same reasoning as medical records. |
+| Scouting | Deny (unchanged from earlier matrix) | Scouts must not see injury-flagged observations. |
+| Assistant scout | Deny | Assistant scouts must not see sports-science data. Their scouting access is limited to non-medical observations only. |
+| Video analyst | Deny | Video analysts must not see any injury or sports-science information. |
+| Medical | See (unchanged from earlier matrix) | Medical staff need to see injury-flagged scouting events to correlate on-ice incidents with medical assessments. |
 
-| Operation | admin | head_coach | assistant_scout | video_analyst | medical_staff |
-|-----------|-------|------------|-----------------|---------------|---------------|
-| SELECT | Allow | Allow | Allow | Allow | Allow |
-| INSERT | Allow | Allow | Deny | Deny | Deny |
-| UPDATE | Allow | Allow | Deny | Deny | Deny |
-| DELETE | Allow | Deny | Deny | Deny | Deny |
+### Medical flags in shared scouting views
 
-### `games`
+| Role | Action | Because |
+|------|--------|---------|
+| Coaching | Deny (unchanged from earlier matrix) | Shared scouting screens that coaching can open must omit medical flags so coaches cannot learn medical status from the scouting view. |
+| Scouting | Deny (unchanged from earlier matrix) | Same reasoning. Scouting screens must not reveal medical flags. |
+| Assistant scout | Deny | Scouting screens that assistant scouts can open must omit medical flags. Hiding the medical table alone does not satisfy this rule because a flag column on a shared scouting view would still leak medical status. |
+| Video analyst | Deny | Scouting or game screens that video analysts can open must omit medical flags. Even if the video analyst cannot see the medical table, a flag on a shared screen would reveal injury information. |
+| Medical | See (unchanged from earlier matrix) | Medical staff may see medical flags because that information is within their role. |
 
-| Operation | admin | head_coach | assistant_scout | video_analyst | medical_staff |
-|-----------|-------|------------|-----------------|---------------|---------------|
-| SELECT | Allow | Allow | Allow | Allow | Allow |
-| INSERT | Allow | Allow | Deny | Deny | Deny |
-| UPDATE | Allow | Allow | Deny | Deny | Deny |
-| DELETE | Allow | Deny | Deny | Deny | Deny |
+### Service-role key
 
-### `scouting_events` (non-medical: `is_medical = false`)
-
-| Operation | admin | head_coach | assistant_scout | video_analyst | medical_staff |
-|-----------|-------|------------|-----------------|---------------|---------------|
-| SELECT | Allow | Allow | Allow | Deny | Allow* |
-| INSERT | Allow | Deny | Allow | Deny | Deny |
-| UPDATE | Allow | Allow | Deny | Deny | Deny |
-| DELETE | Allow | Deny | Deny | Deny | Deny |
-
-### `scouting_events` (medical: `is_medical = true`)
-
-| Operation | admin | head_coach | assistant_scout | video_analyst | medical_staff |
-|-----------|-------|------------|-----------------|---------------|---------------|
-| SELECT | Allow | Deny | Deny | Deny | Allow |
-| INSERT | Allow | Deny | Allow** | Deny | Deny |
-| UPDATE | Allow | Allow*** | Deny | Deny | Deny |
-| DELETE | Allow | Deny | Deny | Deny | Deny |
-
-### `player_medical_notes`
-
-| Operation | admin | head_coach | assistant_scout | video_analyst | medical_staff |
-|-----------|-------|------------|-----------------|---------------|---------------|
-| SELECT | Allow | Deny | Deny | Deny | Allow |
-| INSERT | Allow | Deny | Deny | Deny | Allow |
-| UPDATE | Allow | Deny | Deny | Deny | Allow |
-| DELETE | Allow | Deny | Deny | Deny | Allow |
-
-### Unauthenticated (no session)
-
-| Operation | All tables |
-|-----------|-----------|
-| SELECT | Deny |
-| INSERT | Deny |
-| UPDATE | Deny |
-| DELETE | Deny |
+| Role | Action | Because |
+|------|--------|---------|
+| Coaching | Never | See docs/access/service-role-key-rule.md. No staff screen carries the master key. |
+| Scouting | Never | See docs/access/service-role-key-rule.md. No staff screen carries the master key. |
+| Assistant scout | Never | See docs/access/service-role-key-rule.md. The assistant scout signs in with their own credentials and RLS decides what they see. |
+| Video analyst | Never | See docs/access/service-role-key-rule.md. The video analyst signs in with their own credentials and RLS decides what they see. |
+| Medical | Never | See docs/access/service-role-key-rule.md. Even medical staff, who have the broadest health-data access, must not use the master key. Their access comes from RLS policies, not from bypassing them. |
 
 ---
 
-## Footnotes
+## Narrowed from the audit
 
-*Medical staff seeing non-medical scouting events is an accepted over-grant. The SELECT policy includes medical_staff so they can see medical-flagged events. Filtering them out of non-medical events would require a more complex compound condition for minimal security benefit.
+The overgrant audit (docs/access/overgrant-audit.md) found no grants that are too broad for the new roles. The video analyst has no scouting_events policy (correct implicit deny). The assistant scout has SELECT on non-medical scouting events and INSERT for new observations (correct for the job). Medical data is sealed from both new roles at the database level.
 
-**A scout can INSERT a scouting_event with `is_medical = true` because the INSERT policy checks role, not the medical flag. However, the scout cannot SELECT that row afterward (the SELECT policy hides medical events from scouts). If this becomes a concern, a `WITH CHECK (is_medical = false)` constraint for scouts would close it.
-
-***A head_coach could theoretically UPDATE a medical scouting event if they knew the row ID, because the UPDATE policy allows head_coach. But they cannot SELECT medical rows, so they cannot discover any medical row IDs. No practical exploit path exists.
+Because the audit found no overgrants, no cells were narrowed in this matrix. The new roles received only the specific permissions their jobs require, starting from zero access and granting upward.
 
 ---
 
-## Default-deny confirmation
+## Shared-screen rule
 
-- Any role not explicitly listed in a policy's `current_user_role() IN (...)` clause receives zero rows or a permission error.
-- The `current_user_role()` function returns `'anonymous'` when no role is set in the JWT, which matches no policy.
-- New roles added to the `app_role` enum have no access until policies are explicitly created.
-- All policies are scoped `TO authenticated`, so unauthenticated requests match nothing.
+Scouting screens that the assistant scout, video analyst, or scouting role can open must omit medical flags. This means the database query behind any shared scouting view must filter out rows where is_medical is true before results reach the screen. Hiding the medical notes table alone is not enough because a medical flag on a scouting event row would still reveal injury information to roles that must not see it.
