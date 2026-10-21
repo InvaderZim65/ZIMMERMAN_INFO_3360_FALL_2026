@@ -123,7 +123,7 @@ CREATE POLICY "games_delete_admin"
 -- ═══ Scouting events ════════════════════════════════════════════════════════
 
 -- assistant_scout: allow read on non-medical scouting events (their primary job)
--- video_analyst: deny read (not in role list = zero rows under default-deny)
+-- video_analyst: allow read on non-medical scouting events (needed for film review alignment)
 -- medical_staff: allow read on all scouting events including medical-flagged
 -- Medical flag (is_medical) hidden from non-medical roles by compound condition.
 DROP POLICY IF EXISTS "scouting_events_select" ON public.scouting_events;
@@ -131,7 +131,7 @@ CREATE POLICY "scouting_events_select"
   ON public.scouting_events FOR SELECT
   TO authenticated
   USING (
-    current_user_role() IN ('admin', 'head_coach', 'assistant_scout', 'medical_staff')
+    current_user_role() IN ('admin', 'head_coach', 'assistant_scout', 'video_analyst', 'medical_staff')
     AND (
       is_medical = false
       OR current_user_role() IN ('admin', 'medical_staff')
