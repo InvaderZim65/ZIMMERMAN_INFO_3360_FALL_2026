@@ -1,36 +1,35 @@
 # Service-Role Key Rule
 
 **Tutorial:** 2 (Break Your Own Gate)
+**Step:** 4
 **Author:** Zach Zimmerman
-**Date:** 2026-10-20
+**Date:** 2026-10-21
 
-Related: [docs/security/service-role-usage.md](../security/service-role-usage.md)
-
----
-
-## What the service-role key does
-
-The Supabase service-role key is a master credential that bypasses all Row Level Security policies. When a Supabase client is initialized with this key instead of the anon key, every query runs as if RLS does not exist. No role checks, no medical gating, no default-deny. Every row in every table is fully accessible.
-
-This makes the service-role key the single most dangerous credential in the project. If it leaks into client code or a browser bundle, the entire access control model collapses. A video analyst could read medical notes. An unauthenticated user could query the full database. The five-role permission system becomes meaningless.
+**Sources:** [docs/access/new-roles-brief.md](new-roles-brief.md), [docs/access/overgrant-audit.md](overgrant-audit.md)
 
 ---
 
-## Allowed uses (server-only jobs)
+## What the master key does
 
-The service-role key may only be used for these specific server-side administrative operations:
+The Supabase service-role key is a master key that bypasses all Row-Level Security policies. Any request that carries this key can read, write, and delete every row in every table, regardless of the caller's role. It exists so that trusted server-side jobs like database migrations and admin user management can operate without being blocked by the policies that protect staff data.
 
-### 1. Database migrations
+---
 
-Applying schema changes and RLS policy updates requires bypassing existing policies. Migration scripts run on the server during deployment, not in response to user requests.
+## Default deny
 
-### 2. Admin user management
+Any server job that is not on the allowed list below must not use the master key. If a job is not listed here, it does not get the key. There is no exception process and no "just this once." The key either appears in a named allowed job or it does not appear at all.
 
-Creating new user accounts (`supabase.auth.admin.createUser()`), assigning roles (`supabase.auth.admin.updateUserById()`), and listing accounts (`supabase.auth.admin.listUsers()`) all require the service-role key because the Supabase Admin API demands it. These operations are performed by a system administrator, not by staff members through the application.
+---
 
-### 3. Test user setup
+## Allowed jobs
 
-The test user creation script (`src/test/setup-test-users.ts`) uses the service-role key to create the five test accounts with their assigned roles. This is a development-only operation.
+The following server-only jobs may use the service-role key:
+
+1. **Database migrations** -- applying schema changes and RLS policy updates during deployment.
+2. **Admin user management** -- creating staff accounts and setting their role in app_metadata, which is required because only the service-role key can write to app_metadata.
+3. **Automated test setup** -- seeding test accounts in a CI environment where no human signs in. The key is injected via a CI secret, never stored in the test file itself.
+
+No other server job is on the allowed list.
 
 ---
 
@@ -38,50 +37,27 @@ The test user creation script (`src/test/setup-test-users.ts`) uses the service-
 
 The service-role key must never be used in:
 
-| Context | Why it is forbidden |
-|---------|-------------------|
-| **Client-side code** (any file bundled by Vite) | The key would be visible in the browser's network tab, DevTools, or source maps. Any user could extract it. |
-| **Browser bundles** | Same as above. Vite strips `process.env` but exposes `VITE_`-prefixed variables. The service-role key must never have a `VITE_` prefix. |
-| **Environment variables prefixed with `VITE_`** | Vite injects these into the client build. A `VITE_SUPABASE_SERVICE_ROLE_KEY` variable would ship the key to every browser. |
-| **Test files that run in the browser** | Any test that executes in a browser context could expose the key. |
-| **Server functions responding to staff requests** | If a server function uses the service-role key for a normal data query, RLS is bypassed and the caller sees all data regardless of their role. Use the anon key with the user's session cookie instead. |
-| **Git repositories** | The real key must never be committed. Use environment variables loaded at runtime. |
+- **The assistant scout's screens or server paths.** The assistant scout signs in with their own credentials and their queries run through RLS. The master key would let their requests bypass every policy, including the medical seal.
+- **The video analyst's screens or server paths.** Same reasoning. The video analyst should see only players and games. The master key would expose scouting events and medical data they must never see.
+- **Any everyday staff screen.** No coach, scout, medical staffer, or analyst should ever trigger a request that carries the master key. Staff screens use the anon key, and RLS decides what comes back.
+- **Hiding a medical flag with the master key.** If a shared screen has a bug that would show a medical flag to the wrong role, the fix is to correct the query or the RLS policy, not to use the master key to selectively hide the flag. The master key makes the problem worse, not better.
+- **Client-side code or browser bundles.** Any environment variable prefixed with VITE_ is bundled into the client and visible to anyone who opens DevTools. The service-role key must never use that prefix.
+- **Committed files in the repository.** The real key must never appear in source code, test files, configuration files, or documentation. Use a placeholder in .env.example and inject the real value through environment variables or CI secrets.
 
 ---
 
-## Where the key lives
+## Medical and sports-science data stays sealed
 
-The real service-role key is stored as a server-side environment variable:
-
-- **Variable name:** `SUPABASE_SERVICE_ROLE_KEY`
-- **Set in:** `.env` (local development), Vercel environment variables (production)
-- **Not prefixed with `VITE_`** so Vite does not expose it to the client build
-- **Not committed to Git** -- `.env` is in `.gitignore`
+The overgrant audit (docs/access/overgrant-audit.md) confirmed that medical notes and sports-science data are currently sealed from all non-medical roles by RLS policies. The service-role key is the one path that could break that seal. By restricting the key to the three allowed jobs listed above and forbidding it everywhere else, a buggy staff screen fails closed: if RLS denies a row, no staff request can override that denial because no staff request carries the master key. The screen shows nothing instead of leaking medical data.
 
 ---
 
-## `.env.example` placeholder
+## Storage rule
 
-The repository includes a `.env.example` file with a placeholder value. This file is safe to commit because it contains no real credentials:
+The real service-role key lives in server environment variables only. The repository contains a .env.example file with a placeholder:
 
 ```
-# Supabase credentials -- copy to .env and fill in real values
-VITE_SUPABASE_URL=https://your-project-ref.supabase.co
-VITE_SUPABASE_ANON_KEY=your-anon-key-here
-
-# Server-only -- NEVER prefix with VITE_
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key-here
 ```
 
-The `VITE_` prefix on URL and anon key is intentional -- those are public values that the client needs. The service-role key has no prefix because it must stay server-side.
-
----
-
-## Enforcement checklist
-
-- [ ] `.env` is listed in `.gitignore`
-- [ ] `SUPABASE_SERVICE_ROLE_KEY` has no `VITE_` prefix
-- [ ] No import of the service-role key exists in any file under `src/lib/supabase/client.ts` or any component file
-- [ ] `src/lib/supabase/server-client.ts` uses the anon key, not the service-role key
-- [ ] The test user setup script (`src/test/setup-test-users.ts`) is the only file that reads `SUPABASE_SERVICE_ROLE_KEY`
-- [ ] Vercel environment variables mark the service-role key as server-only (not exposed to the browser build)
+The real value is never committed. It is set in the hosting platform (Vercel environment variables) and in CI secrets (GitHub Actions). Developers who need the key for local admin tasks retrieve it from the Supabase dashboard, not from the repository.
