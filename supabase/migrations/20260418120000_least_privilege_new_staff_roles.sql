@@ -111,6 +111,9 @@ CREATE POLICY "games_update_admin_head_coach"
   USING (current_user_role() IN ('admin', 'head_coach'))
   WITH CHECK (current_user_role() IN ('admin', 'head_coach'));
 
+-- admin only: allow delete on games
+-- assistant_scout: deny delete (not their job)
+-- video_analyst: deny delete (not their job)
 DROP POLICY IF EXISTS "games_delete_admin" ON public.games;
 CREATE POLICY "games_delete_admin"
   ON public.games FOR DELETE
@@ -135,13 +138,20 @@ CREATE POLICY "scouting_events_select"
     )
   );
 
--- assistant_scout: allow add scouting observations (their writing duty)
+-- assistant_scout: allow add non-medical scouting observations (their writing duty)
+-- assistant_scout: deny add sports-science rows where is_medical is true
 -- video_analyst: deny add (not their job)
 DROP POLICY IF EXISTS "scouting_events_insert_admin_assistant" ON public.scouting_events;
 CREATE POLICY "scouting_events_insert_admin_assistant"
   ON public.scouting_events FOR INSERT
   TO authenticated
-  WITH CHECK (current_user_role() IN ('admin', 'assistant_scout'));
+  WITH CHECK (
+    current_user_role() IN ('admin', 'assistant_scout')
+    AND (
+      is_medical = false
+      OR current_user_role() = 'admin'
+    )
+  );
 
 -- coaching: allow change on scouting events (editorial oversight)
 -- assistant_scout: deny change (scouts add, coaches edit)
