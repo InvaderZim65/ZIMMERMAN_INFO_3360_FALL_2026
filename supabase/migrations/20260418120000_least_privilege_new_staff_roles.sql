@@ -13,6 +13,7 @@
 --
 -- Roles: assistant_scout, video_analyst (new); admin, head_coach, medical_staff (unchanged)
 -- No service-role key, token, or env var value appears in this file.
+-- This migration does not grant any table to the public or anon role.
 --
 -- Author: Zach Zimmerman
 -- Date: 2026-10-21
