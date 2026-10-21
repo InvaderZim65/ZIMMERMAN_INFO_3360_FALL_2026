@@ -45,6 +45,10 @@ CREATE VIEW public.scouting_events_safe AS
 -- It only narrows the columns and filters medical-flagged rows so shared screens
 -- cannot accidentally display medical status.
 
+-- Force the view to run with the caller's rights so base-table RLS applies to
+-- the actual user, not the view owner.
+ALTER VIEW public.scouting_events_safe SET (security_invoker = true);
+
 -- ═══ Players ═════════════════════════════════════════════════════════════════
 
 -- assistant_scout: allow read on players (needed to identify who they are scouting)
