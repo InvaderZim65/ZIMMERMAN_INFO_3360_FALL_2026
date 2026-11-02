@@ -22,7 +22,16 @@ Two deliveries are the same event if they have the same game, player, period, an
 - **Exact replay test:** The provider sends a goal for player 8 at minute 10 in period 2. The server stores it. After a timeout, the same goal arrives again. Same game, player, period, and time. The server treats it as a duplicate. This works.
 - **Correction test:** The provider sends a corrected event changing "goal" to "assist" for the same player, period, and time. The composite key matches, so the server recognizes it. This works for corrections. But there is a problem: two different players can have events at the same clock time (a goal and an assist on the same play). If two players share a moment, this key cannot tell them apart. Also, the provider does not control the key. If the provider changes a detail in the composite (fixes a clock time from 14:32 to 14:33), the server treats it as a new event instead of a correction.
 
-### Option C: Use a server-generated identifier
+### Option C: Use the arrival or receive timestamp
+
+Two deliveries are the same event if they arrive at the same time.
+
+- **Exact replay test:** The provider sends a goal at minute 10. The server records the arrival time as 8:00:01 PM. After a timeout, the provider retries the same goal. The retry arrives at 8:00:04 PM, a different arrival time. The server treats it as a new event and stores a second row. The stat is doubled. This fails the no-second-goal rule because a retry always arrives later than the original.
+- **Correction test:** Same problem. A correction arrives at a different time, so it looks like a new event.
+
+**Rejected.** Arrival time changes on every retry, so it can never identify two deliveries as the same event.
+
+### Option D: Use a server-generated identifier
 
 The server creates a new identifier for each delivery. Two deliveries are never recognized as the same event.
 
@@ -39,15 +48,12 @@ Option A works because the provider controls the identity. The same identifier o
 
 Option B fails because the provider does not control a composite of game, player, period, and clock time. If any of those fields are corrected, the key changes, and the server cannot connect the correction to the original. It also cannot handle two events that happen at the exact same clock time for different players.
 
-Option C fails both tests. A server-generated key cannot recognize a retry because every delivery looks new.
+Option C (arrival time) fails because a retry always arrives at a different time. A timestamp that changes on every send can never be an identity.
 
-## What a replayed request must return
+Option D (server-generated key) fails both tests. A server-generated key cannot recognize a retry because every delivery looks new.
 
-When the server receives a delivery whose identifier is already stored:
-
-- If the data matches the stored record: "Already saved." The provider can stop retrying.
-- If the data is different from the stored record: "Correction applied." The server updates the record to the new facts.
+The full set of event details (every field together) is also not the key, because a corrected detail such as changing "goal" to "assist" would change the full-details hash, and the server would treat the correction as a brand-new event instead of an update to the same one. The key must be narrower than the full payload so that a correction keeps the same identity.
 
 ## What this note does not decide
 
-This note chooses the key. It does not name the field in the contract, write code, add SQL, or change the OpenAPI file. Those decisions belong in later steps.
+This note chooses the key. It does not decide what the server replies on a replay, does not name the field in the contract, does not write code, does not add SQL, and does not change the OpenAPI file. Those decisions belong in later steps.
