@@ -34,6 +34,14 @@ If a connection drops in the middle of a batch, it is safe to resend the entire 
 
 If you sent an event with the wrong details (for example, the wrong scorer), see [docs/ingestion/late-correction-handling.md](./late-correction-handling.md) for how a correction must be sent. In short: resend the same identifier with the corrected details. Send corrections after the original is confirmed, not in parallel.
 
+## Replay check
+
+A case is called safe only if [docs/ingestion/replay-comparison.md](./replay-comparison.md) showed it worked. The comparison tested an exact duplicate and an out-of-order arrival. Both matched the prediction: the duplicate did not create a second stat, and the out-of-order event was stored normally.
+
+Outage replay and partial-batch retry follow the same storage rule as the exact-duplicate case (check the key, skip if stored, insert if new). The replay comparison confirmed the key lookup works for duplicates. Outage and partial-batch retries are safe because they are the same mechanism applied to multiple events. No open mismatches exist in the comparison.
+
+Late corrections were tested separately in [docs/ingestion/late-correction-handling.md](./late-correction-handling.md) and confirmed to update the record instead of duplicating it. No open mismatches exist there either.
+
 ## What is NOT safe
 
 ### New identifier for the same event
