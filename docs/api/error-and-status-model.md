@@ -4,124 +4,154 @@ Source: [docs/api/resource-design.md](./resource-design.md)
 
 ## Purpose
 
-This document assigns HTTP status codes to every in-scope operation from the resource design and defines the structured error shape that every failed request returns. The error model is the team agreement: every consumer (the provider's integration code, the coach's browser form) can rely on the same shape.
+This document assigns HTTP status codes to every operation in the resource design and defines the single error envelope that every failed request returns. Both resources (game events and evaluations) share the same envelope so the provider's integration code and the coach's browser form can rely on one parse path.
 
-## Status Code Assignments
+## Decision: 400 vs 422 vs 200-with-failure
+
+- **400 Bad Request** means the HTTP request itself is unusable: the body is not valid JSON, a required Content-Type header is missing, or the request cannot be parsed at all. The server could not even look at the fields.
+- **422 Unprocessable Entity** means the JSON was parsed successfully but one or more field values fail the business rules (missing required field, out-of-range period, unknown event type).
+- **This API never returns 200 with `success: false` or a hidden error inside a 200 body.** If something is wrong, the status code is a 4xx. A 200 always means the request succeeded.
+
+## Status Code Map
 
 ### POST /events (Caller: Third-party hockey data provider)
 
 | Outcome | Status Code | Meaning |
 |---|---|---|
-| Event accepted and stored | 201 Created | A new game event resource was created successfully |
-| Request body is missing required fields or has invalid values | 422 Unprocessable Entity | The server understood the request but the payload fails validation |
-| Request body is not valid JSON | 400 Bad Request | The server cannot parse the request at all |
-| Provider is not authenticated | 401 Unauthorized | The caller did not provide valid credentials |
+| Event accepted and stored | 201 Created | A new game event resource was created |
+| JSON parsed but fields fail validation | 422 Unprocessable Entity | The payload has bad or missing field values |
+| Request is not parseable HTTP/JSON | 400 Bad Request | The server cannot read the request at all |
+| Caller did not provide valid credentials | 401 Unauthorized | Missing or invalid identity token |
+| Caller is authenticated but not the authorized provider | 403 Forbidden | Known caller, not allowed to create events |
+| Duplicate provider_event_id for an event already stored | 409 Conflict | The provider sent an event with a provider_event_id that already exists with different data. This is not a validation error (422) because the payload is well-formed; it conflicts with an existing record. Hockey example: the provider pushes a goal event for player 8 at 14:32 in period 2, then minutes later pushes a different event (an assist for player 12 at 14:32 in period 2) using the same provider_event_id. The server rejects the second push with 409 because the key is already taken by a different event. |
 
 ### POST /evaluations (Caller: Coach)
 
 | Outcome | Status Code | Meaning |
 |---|---|---|
-| Evaluation accepted and stored | 201 Created | A new evaluation resource was created successfully |
-| Form is missing required fields or has invalid values | 422 Unprocessable Entity | The server understood the request but the payload fails validation |
-| Request body is not valid JSON | 400 Bad Request | The server cannot parse the request at all |
-| Coach is not authenticated | 401 Unauthorized | The caller did not provide valid credentials |
+| Evaluation accepted and stored | 201 Created | A new evaluation resource was created |
+| JSON parsed but fields fail validation | 422 Unprocessable Entity | The payload has bad or missing field values |
+| Request is not parseable HTTP/JSON | 400 Bad Request | The server cannot read the request at all |
+| Caller did not provide valid credentials | 401 Unauthorized | Missing or invalid identity token |
+| Caller is authenticated but not a coach | 403 Forbidden | Known caller, not allowed to submit evaluations |
 
-## Why These Codes
+### GET /events (Out of scope, listed for completeness)
 
-- **201 Created**, not 200 OK, because POST creates a new resource. 200 is for reads and updates, not creates.
-- **422 Unprocessable Entity**, not 400, for validation errors because the JSON is parseable but the content is wrong. 400 means the server cannot even read the request.
-- **401 Unauthorized** for missing or invalid credentials. This is separate from 403 Forbidden, which would mean "I know who you are but you are not allowed." Auth design is an open question, so only 401 is listed here.
+| Outcome | Status Code | Meaning |
+|---|---|---|
+| Events returned | 200 OK | The list of events matching the query |
+| Caller did not provide valid credentials | 401 Unauthorized | Missing or invalid identity |
 
-## Structured Error Model
+### GET /events/{event_id} (Out of scope, listed for completeness)
 
-Every 422 response returns the same JSON shape. This is the team agreement so both the provider's code and the coach's form can parse errors the same way.
+| Outcome | Status Code | Meaning |
+|---|---|---|
+| Event found | 200 OK | The requested event resource |
+| Event does not exist | 404 Not Found | No event with that ID exists in the system. 404 is not used for validation errors. |
+| Caller did not provide valid credentials | 401 Unauthorized | Missing or invalid identity |
 
-### Error Response Shape
+### GET /evaluations (Out of scope, listed for completeness)
+
+| Outcome | Status Code | Meaning |
+|---|---|---|
+| Evaluations returned | 200 OK | The list of evaluations matching the query |
+| Caller did not provide valid credentials | 401 Unauthorized | Missing or invalid identity |
+
+### GET /evaluations/{evaluation_id} (Out of scope, listed for completeness)
+
+| Outcome | Status Code | Meaning |
+|---|---|---|
+| Evaluation found | 200 OK | The requested evaluation resource |
+| Evaluation does not exist | 404 Not Found | No evaluation with that ID exists |
+| Caller did not provide valid credentials | 401 Unauthorized | Missing or invalid identity |
+
+## Shared Error Envelope
+
+Every 400, 401, 403, 404, 409, and 422 response uses the same JSON envelope. Both event ingestion and evaluation submission return this identical shape.
 
 ```json
 {
-  "errors": [
-    {
-      "field": "period",
-      "message": "period is required"
-    },
-    {
-      "field": "event_type",
-      "message": "event_type must be one of: goal, assist, penalty, save, shot"
-    }
-  ]
+  "error": {
+    "code": "VALIDATION_FAILED",
+    "message": "One or more fields are invalid.",
+    "details": [
+      {
+        "field": "period",
+        "code": "REQUIRED",
+        "message": "period is required"
+      },
+      {
+        "field": "event_type",
+        "code": "INVALID_VALUE",
+        "message": "event_type must be one of: goal, assist, penalty, save, shot"
+      }
+    ]
+  }
 }
 ```
 
-### Rules
+### Envelope Rules
 
-1. The top-level key is always `errors`, and it is always an array, even for a single error.
-2. Each error object has exactly two keys: `field` (the name of the input field that failed) and `message` (a human-readable sentence explaining what is wrong).
-3. Every required field that is missing gets its own error entry. The response lists all failures at once, not just the first one.
-4. The `message` is plain language a coach can read, not a code or a regex pattern.
-5. A 400 response (unparseable JSON) does not use this shape because there are no fields to name. It returns `{ "error": "Request body must be valid JSON" }`.
+1. The top-level key is always `error` (singular object, not an array).
+2. `error.code` is a machine-readable string (e.g., `VALIDATION_FAILED`, `CONFLICT`, `NOT_FOUND`, `UNAUTHORIZED`, `FORBIDDEN`, `BAD_REQUEST`).
+3. `error.message` is a human-readable summary sentence.
+4. `error.details` is an array of field-level problems. Each item has `field`, `code`, and `message`. The array is empty for errors that are not field-specific (401, 403, 404).
+5. Every required field that fails gets its own entry in `details`. The response lists all failures at once, not just the first one.
 
-### Example: Valid Event (201 Created)
+### Error Codes by Status
 
-Request:
+| Status | error.code | details present? | Example |
+|---|---|---|---|
+| 400 | BAD_REQUEST | Empty array | Body is not valid JSON |
+| 401 | UNAUTHORIZED | Empty array | No token or expired token |
+| 403 | FORBIDDEN | Empty array | Coach trying to POST /events |
+| 404 | NOT_FOUND | Empty array | GET /events/{id} where id does not exist |
+| 409 | CONFLICT | One entry naming the conflicting field | Duplicate provider_event_id |
+| 422 | VALIDATION_FAILED | One entry per failing field | Missing period, bad event_type |
+
+### Example: 409 Conflict (Duplicate Provider Event)
+
 ```json
 {
-  "game_id": "abc-123",
-  "event_type": "goal",
-  "player_id": "player-456",
-  "period": 2,
-  "game_clock": "14:32",
-  "provider_event_id": "evt-789"
+  "error": {
+    "code": "CONFLICT",
+    "message": "An event with this provider_event_id already exists with different data.",
+    "details": [
+      {
+        "field": "provider_event_id",
+        "code": "DUPLICATE_KEY",
+        "message": "provider_event_id evt-789 is already stored for a different event"
+      }
+    ]
+  }
 }
 ```
 
-Response (201):
+### Example: 422 Validation Failed (Evaluation)
+
 ```json
 {
-  "id": "generated-uuid",
-  "game_id": "abc-123",
-  "event_type": "goal",
-  "player_id": "player-456",
-  "period": 2,
-  "game_clock": "14:32",
-  "provider_event_id": "evt-789",
-  "created_at": "2026-11-02T12:00:00Z"
+  "error": {
+    "code": "VALIDATION_FAILED",
+    "message": "One or more fields are invalid.",
+    "details": [
+      {
+        "field": "rating",
+        "code": "OUT_OF_RANGE",
+        "message": "rating must be between 1 and 5"
+      },
+      {
+        "field": "player_id",
+        "code": "REQUIRED",
+        "message": "player_id is required"
+      }
+    ]
+  }
 }
 ```
 
-### Example: Invalid Event (422 Unprocessable Entity)
+## Out of Scope
 
-Request:
-```json
-{
-  "game_id": "abc-123",
-  "event_type": "touchdown",
-  "period": 7
-}
-```
-
-Response (422):
-```json
-{
-  "errors": [
-    {
-      "field": "event_type",
-      "message": "event_type must be one of: goal, assist, penalty, save, shot"
-    },
-    {
-      "field": "period",
-      "message": "period must be between 1 and 4"
-    },
-    {
-      "field": "provider_event_id",
-      "message": "provider_event_id is required"
-    }
-  ]
-}
-```
-
-## Open Decisions
-
-1. **Auth error shape:** Whether 401 responses should use the same `errors` array or a simpler `{ "error": "..." }` shape depends on the auth design in a later sprint.
-2. **Rate limiting:** If the provider sends too many requests, a 429 Too Many Requests status may be needed. Not in scope now.
-3. **Conflict on duplicate:** If idempotency is added later, a duplicate event with conflicting data may need 409 Conflict. This depends on the reliability topic in the next tutorial.
+- **5xx server errors:** Internal failures use standard HTTP 500 without a custom envelope. Designing a server-error format is deferred.
+- **Token issuance:** How auth tokens are created, refreshed, or revoked is a later sprint concern. This document only names 401 and 403 as possible responses.
+- **Database tables:** Storage design is not part of the status-code model. The error envelope describes what the API returns, not how data is stored.
