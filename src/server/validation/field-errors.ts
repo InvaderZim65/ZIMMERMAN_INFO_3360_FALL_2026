@@ -1,11 +1,12 @@
 /**
- * Shared field-level error type used by both event and evaluation
- * validators. Matches the details items in the ErrorEnvelope from
- * openapi/hockey-ingestion.yaml.
+ * Shared field-level error type and helper used by both
+ * event-payload.ts and evaluation-payload.ts.
  *
- * This module only defines the field-error shape. It does not build
- * HTTP status envelopes — that responsibility belongs in the route
- * handlers.
+ * Property names match the validation-error item schema in
+ * openapi/hockey-ingestion.yaml exactly: field, code, message.
+ *
+ * This module defines the error shape and a helper to build
+ * error arrays. It does not create HTTP status envelopes.
  */
 
 export interface FieldError {
@@ -17,3 +18,13 @@ export interface FieldError {
 export type ValidationResult<T> =
   | { ok: true; data: T }
   | { ok: false; errors: FieldError[] };
+
+/**
+ * Build a FieldError from its three required parts.
+ * Keeps error construction consistent across both validators.
+ */
+export function toFieldErrors(
+  ...items: Array<{ field: string; code: string; message: string }>
+): FieldError[] {
+  return items.map(({ field, code, message }) => ({ field, code, message }));
+}
