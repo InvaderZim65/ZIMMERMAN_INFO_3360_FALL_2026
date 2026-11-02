@@ -30,6 +30,12 @@ The provider originally sent a goal by player A at minute 10 of period 2 with ke
 
 The handler uses latest-arrival: when the same key arrives with different data, the most recently received version replaces the stored version. This is a known limitation. If the provider sends the original and the correction out of order (correction arrives first, then the old version arrives second), the old version would overwrite the correction. A provider version or sequence number would be more reliable, but that is not in the contract yet. For now, the provider should send corrections after confirming the original was stored, not in parallel.
 
+## Decision-table check
+
+The late-correction row in the decision table says: the provider realizes the goal at minute 10 was actually an assist. The provider sends a corrected event with the same key but different data. The original record is updated to reflect the correction. The stat reflects the corrected facts, not the original. There is still one event, not two. The sender hears "Correction applied."
+
+**Does this note match that row?** Yes. This note says the same thing: the stored record is updated with the corrected facts, the row count stays at one, and the sender hears "Correction applied." The only addition in this note is the latest-arrival ordering limitation, which the decision table does not address. That limitation does not contradict the decision-table outcome. It is a known edge case documented here so a future sprint can add a version number if needed.
+
 ## Agent's review
 
 I directed the coding agent to check: "If key `evt-200` is stored with player A, and a new delivery of `evt-200` arrives with player B, what does the handler do?"
