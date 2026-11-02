@@ -1,0 +1,301 @@
+openapi: "3.0.3"
+info:
+  title: Hockey Event Ingestion and Coach Evaluations API
+  version: "1.0.0"
+  description: >
+    Contract for the hockey event ingestion API and coach evaluation
+    submission API. Source documents: docs/api/resource-design.md and
+    docs/api/error-and-status-model.md. This contract is the single
+    source of truth. Route handlers must match it exactly.
+
+paths:
+  /events:
+    post:
+      operationId: createGameEvent
+      summary: Provider pushes a single game event
+      description: >
+        The third-party hockey data provider sends one game event
+        (goal, assist, penalty, save, or shot). The server validates
+        every field and returns 201 with the stored record or a
+        structured error envelope.
+      tags:
+        - Game Events
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GameEventInput"
+      responses:
+        "201":
+          description: Event accepted and stored.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GameEvent"
+        "400":
+          description: Request body is not valid JSON.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "401":
+          description: Missing or invalid identity token.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "403":
+          description: Known caller is not the authorized provider.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "409":
+          description: >
+            Duplicate provider_event_id. An event with this key already
+            exists with different data. This is not a validation error;
+            the payload is well-formed but conflicts with a stored record.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "422":
+          description: >
+            JSON was parsed but one or more fields fail validation.
+            The details array lists every failing field.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /evaluations:
+    post:
+      operationId: createEvaluation
+      summary: Coach submits a player evaluation form
+      description: >
+        A coach submits a completed evaluation for a player after
+        practice or a game. The server validates every field and
+        returns 201 with the stored record or a structured error
+        envelope.
+      tags:
+        - Evaluations
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EvaluationInput"
+      responses:
+        "201":
+          description: Evaluation accepted and stored.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Evaluation"
+        "400":
+          description: Request body is not valid JSON.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "401":
+          description: Missing or invalid identity token.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "403":
+          description: Known caller is not a coach.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "422":
+          description: >
+            JSON was parsed but one or more fields fail validation.
+            The details array lists every failing field.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+components:
+  schemas:
+    GameEventInput:
+      type: object
+      required:
+        - game_id
+        - event_type
+        - period
+        - provider_event_id
+      properties:
+        game_id:
+          type: string
+          format: uuid
+          description: ID of the game this event belongs to.
+        event_type:
+          type: string
+          enum:
+            - goal
+            - assist
+            - penalty
+            - save
+            - shot
+          description: The kind of event that occurred.
+        player_id:
+          type: string
+          format: uuid
+          description: ID of the player involved. Optional for some event types.
+        period:
+          type: integer
+          minimum: 1
+          maximum: 4
+          description: Game period (1 through 4, including overtime).
+        game_clock:
+          type: string
+          description: Clock time when the event occurred, e.g. "14:32".
+        provider_event_id:
+          type: string
+          description: >
+            The provider's unique ID for this event. Used as the
+            idempotency key to prevent double-counting.
+        provider_timestamp:
+          type: string
+          format: date-time
+          description: When the provider recorded the event.
+        details:
+          type: object
+          description: Optional extra data the provider attaches.
+
+    GameEvent:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        game_id:
+          type: string
+          format: uuid
+        event_type:
+          type: string
+        player_id:
+          type: string
+          format: uuid
+        period:
+          type: integer
+        game_clock:
+          type: string
+        provider_event_id:
+          type: string
+        provider_timestamp:
+          type: string
+          format: date-time
+        details:
+          type: object
+        created_at:
+          type: string
+          format: date-time
+
+    EvaluationInput:
+      type: object
+      required:
+        - game_id
+        - player_id
+        - rating
+      properties:
+        game_id:
+          type: string
+          format: uuid
+          description: ID of the game or practice session.
+        player_id:
+          type: string
+          format: uuid
+          description: ID of the player being evaluated.
+        rating:
+          type: integer
+          minimum: 1
+          maximum: 5
+          description: Coach's rating of the player (1 lowest, 5 highest).
+        notes:
+          type: string
+          description: Free-text coaching notes about the player's performance.
+
+    Evaluation:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        game_id:
+          type: string
+          format: uuid
+        coach_id:
+          type: string
+          format: uuid
+          description: Derived from the authenticated session, never from client input.
+        player_id:
+          type: string
+          format: uuid
+        rating:
+          type: integer
+        notes:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    ErrorEnvelope:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: object
+          required:
+            - code
+            - message
+            - details
+          properties:
+            code:
+              type: string
+              description: >
+                Machine-readable error code. One of: BAD_REQUEST,
+                UNAUTHORIZED, FORBIDDEN, NOT_FOUND, CONFLICT,
+                VALIDATION_FAILED.
+              enum:
+                - BAD_REQUEST
+                - UNAUTHORIZED
+                - FORBIDDEN
+                - NOT_FOUND
+                - CONFLICT
+                - VALIDATION_FAILED
+            message:
+              type: string
+              description: Human-readable summary of the problem.
+            details:
+              type: array
+              description: >
+                Field-level problems. Empty array for non-field errors
+                (401, 403, 404). One entry per failing field for 422.
+              items:
+                type: object
+                required:
+                  - field
+                  - code
+                  - message
+                properties:
+                  field:
+                    type: string
+                    description: Name of the input field that failed.
+                  code:
+                    type: string
+                    description: >
+                      Machine-readable code for this field error, e.g.
+                      REQUIRED, INVALID_VALUE, OUT_OF_RANGE, DUPLICATE_KEY.
+                  message:
+                    type: string
+                    description: Human-readable sentence a coach can act on.
