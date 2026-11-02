@@ -1,7 +1,14 @@
 # Replay Prediction: What I Expect Before Running It
 
-## Rules I am applying
+## Seal
 
+- **Date and time:** November 2, 2026, 10:10 PM
+- **Was this written before any replay was run?** Yes.
+- **Did I send these deliveries or ask an agent to fill in the outcomes?** No. I applied the rules myself.
+
+## Rules I am applying (five source documents)
+
+- **Decision table:** `docs/ingestion/event-outcome-decision-table.md` — the answer key for all five messy cases.
 - **Idempotency key:** The provider's stable event identifier (from `docs/ingestion/idempotency-key-decision.md`).
 - **Replay response promise:** A replay of a stored key returns `201` with the stored `GameEvent` record. No second event is created (from `docs/ingestion/contract-replay-delta.md`).
 - **Storage rule summary:** New key = store and return `201`. Same key with same data = return stored record as `201`, no second insert. Same key with different data = update the record. Out-of-order arrival with a new key = store normally (from `docs/ingestion/storage-rule.md`).
@@ -80,3 +87,5 @@
 | evt-101 | assist | player 11 | 2 | 12:00 | 1 |
 
 Total events stored: 3. Total deliveries received: 4. The duplicate did not inflate any stat.
+
+The late minute-8 goal (`evt-099`) is stored once because a new key is stored even when arrival order does not match game time. It arrived fourth but its game time is earliest. The storage rule does not reject late arrivals. Stats follow stored events, not the order deliveries came in. A coach looking at the period-2 stats sees goals at minute 8 and minute 10, and an assist at minute 12, regardless of which delivery the server received first.
