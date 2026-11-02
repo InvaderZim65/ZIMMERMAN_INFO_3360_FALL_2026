@@ -18,7 +18,7 @@ Every event you send must carry a stable event identifier that you assign before
 
 ### Timeout retry (same identifier, same details)
 
-If you send an event and do not get a response in time, send it again with the same identifier and the same details. This is safe. Our system will check whether we already stored it. If we did, we return the stored record and do not create a duplicate. If we did not, we store it now. Either way, one event, one stat.
+If you send an event and do not get a response in time, send it again with the same identifier and the same details. This is safe. The replay promise in [docs/ingestion/contract-replay-delta.md](./contract-replay-delta.md) describes what the endpoint returns on a replay. The replay comparison in [docs/ingestion/replay-comparison.md](./replay-comparison.md) confirmed this works: a duplicate delivery did not create a second stat.
 
 ### Outage replay (batch of events after your system restarts)
 
@@ -32,9 +32,7 @@ If a connection drops in the middle of a batch, it is safe to resend the entire 
 
 ### Fixing a mistake (same identifier, different details)
 
-If you sent an event with the wrong details (for example, the wrong scorer), resend the same identifier with the corrected details. Our system will detect the data changed and update the stored record. The coach will see the corrected stat. There will still be one event, not two.
-
-**Important:** Send corrections after the original event is confirmed, not at the same time. If the correction and the original arrive out of order, our system currently uses the latest arrival, which could put the old version back.
+If you sent an event with the wrong details (for example, the wrong scorer), see [docs/ingestion/late-correction-handling.md](./late-correction-handling.md) for how a correction must be sent. In short: resend the same identifier with the corrected details. Send corrections after the original is confirmed, not in parallel.
 
 ## What is NOT safe
 
@@ -44,7 +42,7 @@ Do not create a new identifier for a retry of the same event. If you do, our sys
 
 ### Old details after a correction
 
-If you corrected an event (changed the scorer from player A to player B), do not resend the old version with player A using the same identifier. That would overwrite the correction and put the wrong scorer back on the coach's screen.
+If you corrected an event (changed the scorer from player A to player B), do not resend the old version with player A using the same identifier. See the ordering limitation in [docs/ingestion/late-correction-handling.md](./late-correction-handling.md). Sending old details after a correction would overwrite the fix.
 
 ### Skipping the identifier
 
