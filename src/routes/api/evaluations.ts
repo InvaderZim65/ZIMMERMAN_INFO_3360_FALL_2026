@@ -1,37 +1,61 @@
-// src/routes/api/evaluations.ts
-// API route handler for evaluation form submission.
-// Delegates to the server function in src/server/evaluations.ts.
+/**
+ * POST /api/evaluations — coach evaluation submission route.
+ *
+ * Imports and calls validateEvaluationPayload from the validation module.
+ * Returns status codes and error shapes from openapi/hockey-ingestion.yaml.
+ * Persistence and authentication are out of scope for this step.
+ * coach_id would be derived from the authenticated session in a later step.
+ */
 
-import { json } from '@tanstack/react-start'
-import { createAPIFileRoute } from '@tanstack/react-start/api'
-import { submitEvaluation } from '../../server/evaluations'
+import { json } from "@tanstack/react-start";
+import { createAPIFileRoute } from "@tanstack/react-start/api";
+import { validateEvaluationPayload } from "../../server/validation/evaluation-payload";
 
-export const APIRoute = createAPIFileRoute('/api/evaluations')({
+export const APIRoute = createAPIFileRoute("/api/evaluations")({
   POST: async ({ request }) => {
-    let body: unknown
+    // Parse JSON — unreadable JSON is a documented client error, not a crash.
+    let body: unknown;
     try {
-      body = await request.json()
+      body = await request.json();
     } catch {
       return json(
-        { errors: [{ field: '_body', message: 'Invalid JSON in request body' }] },
+        {
+          error: {
+            code: "BAD_REQUEST",
+            message: "Request body must be valid JSON.",
+            details: [],
+          },
+        },
         { status: 400 },
-      )
+      );
     }
 
-    const result = await submitEvaluation({ data: body })
+    // Validate against the contract schema.
+    const result = validateEvaluationPayload(body);
 
-    switch (result.status) {
-      case 201:
-        return json(result.data, { status: 201 })
-      case 400:
-        return json({ errors: result.errors }, { status: 400 })
-      case 401:
-        return json({ error: result.error }, { status: 401 })
-      default:
-        return json(
-          { error: 'error' in result ? result.error : 'Internal server error' },
-          { status: 500 },
-        )
+    if (!result.ok) {
+      return json(
+        {
+          error: {
+            code: "VALIDATION_FAILED",
+            message: "One or more fields are invalid.",
+            details: result.errors,
+          },
+        },
+        { status: 422 },
+      );
     }
+
+    // Stub success — persistence and auth are out of scope for this step.
+    return json(
+      {
+        id: "00000000-0000-0000-0000-000000000000",
+        coach_id: "00000000-0000-0000-0000-000000000000",
+        ...result.data,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      },
+      { status: 201 },
+    );
   },
-})
+});
