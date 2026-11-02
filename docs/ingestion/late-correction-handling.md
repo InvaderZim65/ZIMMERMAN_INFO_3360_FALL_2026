@@ -2,42 +2,45 @@
 
 Sources:
 - Late-correction row in [docs/ingestion/event-outcome-decision-table.md](./event-outcome-decision-table.md)
-- [docs/ingestion/idempotency-key-decision.md](./idempotency-key-decision.md)
-- [docs/ingestion/contract-replay-delta.md](./contract-replay-delta.md)
+- [docs/ingestion/idempotency-key-decision.md](./idempotency-key-decision.md) — the key is the provider's stable event identifier
+- [docs/ingestion/contract-replay-delta.md](./contract-replay-delta.md) — the replay promise applies only when the goal details are unchanged
 - [docs/ingestion/storage-rule.md](./storage-rule.md)
 
 ## What is a late correction
 
-A late correction is a second delivery that uses the same idempotency key as an already-stored event but changes at least one detail. For example, the provider originally sent a goal by player A at minute 10, then sends the same key again but says it was actually player B who scored. The key is the same. The data is different.
+A late correction is a second delivery that uses the same provider event identifier (the idempotency key chosen in the key decision) but changes at least one goal detail. There is no second key for corrections. The same key connects the correction to the original event.
 
-## How a late correction differs from an exact replay
+## When the replay promise applies and when it does not
 
-An exact replay has the same key and the same data. The storage rule says: return the stored record, do not insert again. A correction has the same key but different data. The storage rule and decision table say: update the existing record with the corrected facts. There is still one event, not two.
+The contract-replay-delta promise says: if the provider event identifier matches and the data is the same, return the stored record as `201`. That promise applies only when the goal details are unchanged (an exact replay). A changed-detail resend is not a safe exact retry. When the data is different, the app must update the record instead of returning the old one.
 
-## The correction rule
+## The hockey example
 
-When the ingestion endpoint receives a delivery whose idempotency key matches a stored event but the data is different:
+The provider originally sent a goal by player A at minute 10 of period 2 with key `evt-200`. The server stored it. Later the provider realizes player B actually scored. The provider resends key `evt-200` with player B as the scorer.
 
-1. Update the stored record with the corrected facts (new scorer, new event type, or any changed field).
-2. The database still has one row for that key. The stat reflects the correction, not the original.
-3. Tell the sender: "Correction applied."
+**What must happen:**
 
-## What happened before the fix
+- The stored record is updated so player B holds the goal. Player A no longer holds it.
+- The team's goal total stays at one. No second goal is created.
+- The coach sees player B as the scorer, not player A.
 
-Before the agent made the correction change, a same-key delivery with a different scorer was treated as an exact replay. The handler found the stored record, saw the key matched, and returned the original record without checking whether the data was different. The wrong scorer stayed on the coach's screen.
+**What the agent was told:** A changed-detail resend with the same key is not a safe exact retry. The handler must detect the data difference and update the stored record.
 
-## What the agent changed
+## How storage knows which copy is newest
 
-I directed the coding agent to make the smallest change so a same-key resend with different data updates the stored record instead of ignoring the difference. The agent added a data comparison after the key lookup. If the key exists and the data matches, the handler returns the stored record (exact replay). If the key exists and the data is different, the handler updates the stored record with the new facts (correction).
+The handler uses latest-arrival: when the same key arrives with different data, the most recently received version replaces the stored version. This is a known limitation. If the provider sends the original and the correction out of order (correction arrives first, then the old version arrives second), the old version would overwrite the correction. A provider version or sequence number would be more reliable, but that is not in the contract yet. For now, the provider should send corrections after confirming the original was stored, not in parallel.
 
-## Review: does the correction match the decision table?
+## Agent's review
 
-**Decision table says (late-correction row):** The original record is updated to reflect the correction. The stat reflects the corrected facts. There is still one event, not two. The sender hears "Correction applied."
+I directed the coding agent to check: "If key `evt-200` is stored with player A, and a new delivery of `evt-200` arrives with player B, what does the handler do?"
 
-**What the app does now:** The handler finds the stored event by key, detects different data, updates the row, and returns the updated record. One row, corrected facts.
-
-**Match:** Yes. A goal by player A corrected to a goal by player B results in one row showing player B. The coach sees the right scorer.
+The agent confirmed:
+- The handler finds the existing row by key `evt-200`.
+- It compares the stored data to the incoming data and detects a difference (player A vs player B).
+- It updates the stored row with the new facts (player B).
+- It returns the updated record. The sender hears "Correction applied."
+- The row count stays at one. Player B holds the goal. Player A does not. The team total is one goal.
 
 ## Provider note
 
-If the provider needs to correct a previously sent event, it should resend the same idempotency key with the updated details. The ingestion endpoint will update the stored record. The provider does not need a separate correction endpoint. Using the same key is what connects the correction to the original event.
+To correct a previously sent event, resend the same provider event identifier with the updated details. The ingestion endpoint will update the stored record. Do not generate a new key for the correction. Using the same key is what connects the correction to the original. Send corrections after the original is confirmed, not in parallel, to avoid an ordering problem.
