@@ -18,7 +18,10 @@ paths:
         The third-party hockey data provider sends one game event
         (goal, assist, penalty, save, or shot). The server validates
         every field and returns 201 with the stored record or a
-        structured error envelope.
+        structured error envelope. If the provider event identifier
+        in the request matches an event already stored, the server
+        returns the existing record. No second event is created.
+        The provider receives a success response and can stop retrying.
       tags:
         - Game Events
       requestBody:
