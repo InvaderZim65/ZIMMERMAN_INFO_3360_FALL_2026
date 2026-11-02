@@ -30,7 +30,7 @@ Each file below is tied to a stakeholder outcome:
 ### Resources and methods
 
 - **Game events** are stored at `POST /api/events`. The provider pushes one event at a time. The path is a noun ("events"), not a verb.
-- **Evaluations** are stored at `POST /api/evaluations`. The coach submits one form at a time. The coach_id comes from the authenticated session, never from the form.
+- **Evaluations** are stored at `POST /api/evaluations`. The coach submits one form at a time. When authentication is added, coach_id will come from the authenticated session, never from the form itself.
 - Read operations (GET) are not in scope yet. They were deferred until the inventory explicitly authorizes them.
 
 ### Error format
@@ -52,21 +52,26 @@ Each file below is tied to a stakeholder outcome:
 
 | Responsibility | Owner |
 |---|---|
-| Coach types a rating and notes into the evaluation form | **Frontend** (browser screens) |
+| Coach types a rating and notes into the evaluation form | **Frontend** (browser screens; the frontend shows server field errors from the details array; a browser check is never final) |
 | Provider sends event data as JSON | **Provider's system** (no screen, machine-to-machine) |
 | Validate every field before anything is stored | **Backend API** (server-side, never the browser) |
-| Store accepted events and evaluations | **Database** (not yet implemented) |
+| Store accepted events and evaluations | **Database** (not yet implemented; unidentified writes must not be stored, so identity must be verified before persistence is added) |
 | Decide playing time based on evaluations | **Head coach** (human judgment, not software) |
 | Review submitted evaluations | **Head coach** (software records the review, does not make the decision) |
-| Verify the provider is who they claim to be | **Backend API** (mechanism TBD in a later sprint) |
+| Verify the provider is who they claim to be | **Backend API** (mechanism TBD; must be resolved before persistence) |
+
+## Open questions for the next sprint
+
+These are questions, not decisions. The next sprint must answer them before building.
+
+1. **How does the provider prove identity?** API key in a header? Shared secret? OAuth token? Until this is answered, unidentified writes must not be stored.
+2. **How long are evaluations kept?** Indefinitely? Archived after the season? This affects storage and retention policy.
+3. **Can the provider correct a previously accepted event?** If yes, what identifies the original, and does the correction replace it or create a new version?
+4. **Can a coach save a partial evaluation and finish later?** If yes, the form needs a draft state and the validation rules change for incomplete submissions.
+5. **Will the coaching staff need to search or filter stored events and evaluations?** If yes, GET endpoints need to be added to the contract.
 
 ## What the next sprint should build against
 
-The OpenAPI contract (`openapi/hockey-ingestion.yaml`) is the single source of truth. The next sprint can implement:
-
-1. **Authentication:** Add API key or token verification to the route handlers. The 401 and 403 responses are already defined in the contract.
-2. **Persistence:** Create database tables and replace the stub success responses with real inserts. The validation layer stays the same.
-3. **Idempotency:** Handle the case where the provider sends the same event twice. The 409 Conflict response is already in the contract.
-4. **Frontend form:** Build a coach evaluation form that submits to `POST /api/evaluations` and displays field-level errors from the `error.details` array.
+The OpenAPI contract (`openapi/hockey-ingestion.yaml`) is the single source of truth. Identity must be resolved first, then persistence, in that order. Unidentified writes must not reach the database.
 
 Nothing in the next sprint should change the paths, methods, status codes, or error shape without updating the contract first.
